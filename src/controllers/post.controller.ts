@@ -5,7 +5,7 @@ import { RequestWithUser } from '../types';
 class PostController {
   createPost = async (req: RequestWithUser, res: Response, next: NextFunction): Promise<void> => {
     try {
-      const userId = req.body.userId ?? req.user?.id;
+      const userId = req.body.userId;
       const { text, mediaUrl, mediaType } = req.body;
 
       if (!userId || !text) {

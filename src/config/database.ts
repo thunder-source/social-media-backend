@@ -2,7 +2,6 @@ import mongoose from 'mongoose';
 
 type MongooseConnection = typeof mongoose;
 
-const { MONGODB_URI } = process.env;
 
 const createConnectionOptions = (): mongoose.ConnectOptions => ({
     maxPoolSize: Number(process.env.MONGODB_POOL_SIZE) || 10,
@@ -11,8 +10,12 @@ const createConnectionOptions = (): mongoose.ConnectOptions => ({
 });
 
 export const connectDatabase = async (): Promise<MongooseConnection> => {
+    const { MONGODB_URI } = process.env;
+
     if (!MONGODB_URI) {
-        throw new Error('MONGODB_URI environment variable is not defined');
+        throw new Error(
+            'MONGODB_URI environment variable is not defined. Please create a .env file with MONGODB_URI=mongodb://localhost:27017/your-database-name'
+        );
     }
 
     try {

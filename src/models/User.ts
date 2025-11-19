@@ -10,6 +10,7 @@ export interface IUser {
   createdAt?: Date;
   updatedAt?: Date;
   friendsCount?: number;
+  _id?: boolean;
 }
 
 export type UserDocument = HydratedDocument<IUser>;
@@ -19,8 +20,6 @@ const UserSchema = new Schema<IUser, UserModel>(
   {
     googleId: {
       type: String,
-      unique: true,
-      sparse: true,
       trim: true,
     },
     password: {
@@ -30,7 +29,6 @@ const UserSchema = new Schema<IUser, UserModel>(
     email: {
       type: String,
       required: true,
-      unique: true,
       lowercase: true,
       trim: true,
     },
@@ -59,6 +57,7 @@ UserSchema.virtual('friendsCount').get(function (this: UserDocument) {
   return this.friends?.length ?? 0;
 });
 
+// Define indexes explicitly to avoid duplicates
 UserSchema.index({ googleId: 1 }, { unique: true, sparse: true });
 UserSchema.index({ email: 1 }, { unique: true });
 UserSchema.index({ name: 1 });
