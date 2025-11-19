@@ -1,21 +1,35 @@
-import { Schema, model, Document, Types } from 'mongoose';
+import { Schema, Types, model, HydratedDocument, Model } from 'mongoose';
 
-export interface IMessage extends Document {
-  chat: Types.ObjectId;
-  sender: Types.ObjectId;
-  content: string;
-  readBy: Types.ObjectId[];
+export interface IMessage {
+  chatId: Types.ObjectId;
+  senderId: Types.ObjectId;
+  text: string;
+  readBy?: Types.ObjectId[];
+  createdAt?: Date;
 }
 
-const MessageSchema = new Schema<IMessage>(
+export type MessageDocument = HydratedDocument<IMessage>;
+export type MessageModel = Model<IMessage>;
+
+const MessageSchema = new Schema<IMessage, MessageModel>(
   {
-    chat: { type: Schema.Types.ObjectId, ref: 'Chat', required: true },
-    sender: { type: Schema.Types.ObjectId, ref: 'User', required: true },
-    content: { type: String, required: true },
-    readBy: [{ type: Schema.Types.ObjectId, ref: 'User' }],
+    chatId: { type: Schema.Types.ObjectId, ref: 'Chat', required: true },
+    senderId: { type: Schema.Types.ObjectId, ref: 'User', required: true },
+    text: { type: String, required: true, trim: true },
+    readBy: {
+      type: [{ type: Schema.Types.ObjectId, ref: 'User' }],
+      default: [],
+    },
   },
-  { timestamps: true }
+  {
+    timestamps: { createdAt: true, updatedAt: false },
+    toJSON: { virtuals: true, versionKey: false },
+    toObject: { virtuals: true, versionKey: false },
+  }
 );
 
-export const Message = model<IMessage>('Message', MessageSchema);
+MessageSchema.index({ chatId: 1, createdAt: 1 });
+MessageSchema.index({ senderId: 1, createdAt: -1 });
+
+export const Message = model<IMessage, MessageModel>('Message', MessageSchema);
 

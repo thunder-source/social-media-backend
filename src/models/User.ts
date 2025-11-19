@@ -1,23 +1,67 @@
-import { Schema, model, Document } from 'mongoose';
+import { Schema, Types, model, HydratedDocument, Model } from 'mongoose';
 
-export interface IUser extends Document {
-  name: string;
-  email: string;
-  password?: string;
+export interface IUser {
   googleId?: string;
-  avatarUrl?: string;
+  email: string;
+  name: string;
+  photo?: string;
+  password?: string;
+  friends?: Types.ObjectId[];
+  createdAt?: Date;
+  updatedAt?: Date;
+  friendsCount?: number;
 }
 
-const UserSchema = new Schema<IUser>(
+export type UserDocument = HydratedDocument<IUser>;
+export type UserModel = Model<IUser>;
+
+const UserSchema = new Schema<IUser, UserModel>(
   {
-    name: { type: String, required: true },
-    email: { type: String, required: true, unique: true },
-    password: { type: String },
-    googleId: { type: String },
-    avatarUrl: { type: String },
+    googleId: {
+      type: String,
+      unique: true,
+      sparse: true,
+      trim: true,
+    },
+    password: {
+      type: String,
+      minlength: 6,
+    },
+    email: {
+      type: String,
+      required: true,
+      unique: true,
+      lowercase: true,
+      trim: true,
+    },
+    name: {
+      type: String,
+      required: true,
+      trim: true,
+    },
+    photo: {
+      type: String,
+      trim: true,
+    },
+    friends: {
+      type: [{ type: Schema.Types.ObjectId, ref: 'User' }],
+      default: [],
+    },
   },
-  { timestamps: true }
+  {
+    timestamps: true,
+    toJSON: { virtuals: true, versionKey: false },
+    toObject: { virtuals: true, versionKey: false },
+  }
 );
 
-export const User = model<IUser>('User', UserSchema);
+UserSchema.virtual('friendsCount').get(function (this: UserDocument) {
+  return this.friends?.length ?? 0;
+});
+
+UserSchema.index({ googleId: 1 }, { unique: true, sparse: true });
+UserSchema.index({ email: 1 }, { unique: true });
+UserSchema.index({ name: 1 });
+
+export const User = model<IUser, UserModel>('User', UserSchema);
 

@@ -1,17 +1,25 @@
-import { Notification } from '../models/Notification';
+import { Notification, NotificationType } from '../models/Notification';
 import { getSocket } from './socket.service';
+
+interface NotifyUserOptions {
+  type: NotificationType;
+  fromUser: string;
+  message: string;
+  postId?: string;
+  friendRequestId?: string;
+}
 
 export const notifyUser = async (
   userId: string,
-  message: string,
-  type = 'generic',
-  metadata?: Record<string, unknown>
+  { type, fromUser, message, postId, friendRequestId }: NotifyUserOptions
 ) => {
   const notification = await Notification.create({
-    user: userId,
-    message,
+    userId,
     type,
-    metadata,
+    fromUser,
+    message,
+    postId,
+    friendRequestId,
   });
 
   try {

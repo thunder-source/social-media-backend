@@ -1,23 +1,51 @@
-import { Schema, model, Document, Types } from 'mongoose';
+import { Schema, Types, model, HydratedDocument, Model } from 'mongoose';
 
-export interface INotification extends Document {
-  user: Types.ObjectId;
-  type: string;
+export type NotificationType =
+  | 'friend_request'
+  | 'message'
+  | 'like'
+  | 'comment';
+
+export interface INotification {
+  userId: Types.ObjectId;
+  type: NotificationType;
+  fromUser: Types.ObjectId;
+  postId?: Types.ObjectId;
+  friendRequestId?: Types.ObjectId;
   message: string;
   read: boolean;
-  metadata?: Record<string, unknown>;
+  createdAt?: Date;
 }
 
-const NotificationSchema = new Schema<INotification>(
+export type NotificationDocument = HydratedDocument<INotification>;
+export type NotificationModel = Model<INotification>;
+
+const NotificationSchema = new Schema<INotification, NotificationModel>(
   {
-    user: { type: Schema.Types.ObjectId, ref: 'User', required: true },
-    type: { type: String, required: true },
-    message: { type: String, required: true },
+    userId: { type: Schema.Types.ObjectId, ref: 'User', required: true },
+    type: {
+      type: String,
+      enum: ['friend_request', 'message', 'like', 'comment'],
+      required: true,
+    },
+    fromUser: { type: Schema.Types.ObjectId, ref: 'User', required: true },
+    postId: { type: Schema.Types.ObjectId, ref: 'Post' },
+    friendRequestId: { type: Schema.Types.ObjectId, ref: 'FriendRequest' },
+    message: { type: String, required: true, trim: true },
     read: { type: Boolean, default: false },
-    metadata: { type: Schema.Types.Mixed },
   },
-  { timestamps: true }
+  {
+    timestamps: { createdAt: true, updatedAt: false },
+    toJSON: { virtuals: true, versionKey: false },
+    toObject: { virtuals: true, versionKey: false },
+  }
 );
 
-export const Notification = model<INotification>('Notification', NotificationSchema);
+NotificationSchema.index({ userId: 1, read: 1, createdAt: -1 });
+NotificationSchema.index({ type: 1, createdAt: -1 });
+
+export const Notification = model<INotification, NotificationModel>(
+  'Notification',
+  NotificationSchema
+);
 

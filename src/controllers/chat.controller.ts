@@ -7,8 +7,8 @@ class ChatController {
     try {
       const { participants } = req.body;
 
-      if (!Array.isArray(participants) || participants.length < 2) {
-        res.status(400).json({ message: 'At least two participants are required.' });
+      if (!Array.isArray(participants) || participants.length !== 2) {
+        res.status(400).json({ message: 'Exactly two participants are required.' });
         return;
       }
 
@@ -23,7 +23,7 @@ class ChatController {
   getChatMessages = async (req: Request, res: Response, next: NextFunction): Promise<void> => {
     try {
       const { chatId } = req.params;
-      const messages = await Message.find({ chat: chatId }).sort({ createdAt: 1 });
+      const messages = await Message.find({ chatId }).sort({ createdAt: 1 });
       res.json(messages);
     } catch (error) {
       next(error);

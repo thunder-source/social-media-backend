@@ -4,14 +4,14 @@ import { FriendRequest } from '../models/FriendRequest';
 class FriendController {
   sendRequest = async (req: Request, res: Response, next: NextFunction): Promise<void> => {
     try {
-      const { requester, recipient } = req.body;
+      const { from, to, triggeredFromPostId } = req.body;
 
-      if (!requester || !recipient) {
-        res.status(400).json({ message: 'Requester and recipient are required.' });
+      if (!from || !to) {
+        res.status(400).json({ message: 'Sender and recipient are required.' });
         return;
       }
 
-      const request = await FriendRequest.create({ requester, recipient });
+      const request = await FriendRequest.create({ from, to, triggeredFromPostId });
 
       res.status(201).json(request);
     } catch (error) {

@@ -5,15 +5,20 @@ import { RequestWithUser } from '../types';
 class PostController {
   createPost = async (req: RequestWithUser, res: Response, next: NextFunction): Promise<void> => {
     try {
-      const author = req.body.author ?? req.user?.id;
-      const { content, mediaUrl } = req.body;
+      const userId = req.body.userId ?? req.user?.id;
+      const { text, mediaUrl, mediaType } = req.body;
 
-      if (!author || !content) {
-        res.status(400).json({ message: 'Author and content are required.' });
+      if (!userId || !text) {
+        res.status(400).json({ message: 'User and text are required.' });
         return;
       }
 
-      const post = await Post.create({ author, content, mediaUrl });
+      if (mediaType && !['image', 'video'].includes(mediaType)) {
+        res.status(400).json({ message: 'mediaType must be image or video.' });
+        return;
+      }
+
+      const post = await Post.create({ userId, text, mediaUrl, mediaType });
 
       res.status(201).json(post);
     } catch (error) {
@@ -23,7 +28,7 @@ class PostController {
 
   listPosts = async (_req: Request, res: Response, next: NextFunction): Promise<void> => {
     try {
-      const posts = await Post.find().populate('author', '-password').sort({ createdAt: -1 });
+      const posts = await Post.find().populate('userId', '-password').sort({ createdAt: -1 });
       res.json(posts);
     } catch (error) {
       next(error);

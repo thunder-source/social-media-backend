@@ -5,7 +5,7 @@ class NotificationController {
   listNotifications = async (req: Request, res: Response, next: NextFunction): Promise<void> => {
     try {
       const { userId } = req.params;
-      const notifications = await Notification.find({ user: userId }).sort({ createdAt: -1 });
+      const notifications = await Notification.find({ userId }).sort({ createdAt: -1 });
       res.json(notifications);
     } catch (error) {
       next(error);

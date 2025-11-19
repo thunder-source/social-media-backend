@@ -1,25 +1,52 @@
-import { Schema, model, Document, Types } from 'mongoose';
+import { Schema, Types, model, HydratedDocument, Model } from 'mongoose';
 
 export type FriendRequestStatus = 'pending' | 'accepted' | 'rejected';
 
-export interface IFriendRequest extends Document {
-  requester: Types.ObjectId;
-  recipient: Types.ObjectId;
+export interface IFriendRequest {
+  from: Types.ObjectId;
+  to: Types.ObjectId;
   status: FriendRequestStatus;
+  triggeredFromPostId?: Types.ObjectId;
+  createdAt?: Date;
 }
 
-const FriendRequestSchema = new Schema<IFriendRequest>(
+export type FriendRequestDocument = HydratedDocument<IFriendRequest>;
+export type FriendRequestModel = Model<IFriendRequest>;
+
+const FriendRequestSchema = new Schema<IFriendRequest, FriendRequestModel>(
   {
-    requester: { type: Schema.Types.ObjectId, ref: 'User', required: true },
-    recipient: { type: Schema.Types.ObjectId, ref: 'User', required: true },
+    from: {
+      type: Schema.Types.ObjectId,
+      ref: 'User',
+      required: true,
+    },
+    to: {
+      type: Schema.Types.ObjectId,
+      ref: 'User',
+      required: true,
+    },
     status: {
       type: String,
       enum: ['pending', 'accepted', 'rejected'],
       default: 'pending',
     },
+    triggeredFromPostId: {
+      type: Schema.Types.ObjectId,
+      ref: 'Post',
+    },
   },
-  { timestamps: true }
+  {
+    timestamps: { createdAt: true, updatedAt: false },
+    toJSON: { virtuals: true, versionKey: false },
+    toObject: { virtuals: true, versionKey: false },
+  }
 );
 
-export const FriendRequest = model<IFriendRequest>('FriendRequest', FriendRequestSchema);
+FriendRequestSchema.index({ from: 1, to: 1 }, { unique: true });
+FriendRequestSchema.index({ to: 1, status: 1 });
+
+export const FriendRequest = model<IFriendRequest, FriendRequestModel>(
+  'FriendRequest',
+  FriendRequestSchema
+);
 
