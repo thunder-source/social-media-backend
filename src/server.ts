@@ -1,3 +1,6 @@
+import dotenv from 'dotenv';
+dotenv.config();
+
 import http from 'http';
 import express from 'express';
 import cors from 'cors';
@@ -6,7 +9,6 @@ import morgan from 'morgan';
 import compression from 'compression';
 import session from 'express-session';
 import passport from 'passport';
-import dotenv from 'dotenv';
 import cookieParser from 'cookie-parser';
 import { connectDatabase } from './config/database';
 import { configurePassport } from './config/passport';
@@ -21,14 +23,12 @@ import { errorHandler } from './middlewares/error.middleware';
 import { setupSwagger } from './config/swagger';
 import { initializeSocket } from './services/socket.service';
 
-dotenv.config();
-
 const app = express();
 
 app.use(helmet());
 app.use(
   cors({
-    origin: process.env.CLIENT_URL ?? '*',
+    origin: process.env.CLIENT_URL ?? 'http://localhost:3000',
     credentials: true,
   })
 );
