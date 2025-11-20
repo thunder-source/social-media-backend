@@ -4,7 +4,7 @@ import { FriendRequest } from '../models/FriendRequest';
 import { User } from '../models/User';
 import { Chat } from '../models/Chat';
 import { RequestWithUser } from '../types';
-import { getSocket } from '../services/socket.service';
+import { socketService } from '../services/socket.service';
 
 class FriendController {
   /**
@@ -91,8 +91,7 @@ class FriendController {
 
       // Emit socket event to recipient
       try {
-        const io = getSocket();
-        io.to(toUserId).emit('friend:request:received', {
+        socketService.emitToUser(toUserId, 'friend:request:received', {
           request: populatedRequest,
           message: `${fromUser.name} sent you a friend request`,
         });
@@ -187,8 +186,7 @@ class FriendController {
 
       // Emit socket event to requester
       try {
-        const io = getSocket();
-        io.to(fromUserId).emit('friend:request:accepted', {
+        socketService.emitToUser(fromUserId, 'friend:request:accepted', {
           request: populatedRequest,
           chatId: chat._id,
           message: `${acceptingUser?.name} accepted your friend request`,
@@ -258,8 +256,7 @@ class FriendController {
 
       // Emit socket event to requester
       try {
-        const io = getSocket();
-        io.to(friendRequest.from.toString()).emit('friend:request:rejected', {
+        socketService.emitToUser(friendRequest.from.toString(), 'friend:request:rejected', {
           request: populatedRequest,
           message: `${rejectingUser?.name} rejected your friend request`,
         });
@@ -323,8 +320,7 @@ class FriendController {
 
       // Emit socket event to unfriended user
       try {
-        const io = getSocket();
-        io.to(friendId).emit('friend:removed', {
+        socketService.emitToUser(friendId, 'friend:removed', {
           userId: userId,
           message: `${unfriendingUser?.name} removed you from their friends`,
         });

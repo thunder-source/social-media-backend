@@ -16,6 +16,7 @@ import postRoutes from './routes/post.routes';
 import chatRoutes from './routes/chat.routes';
 import friendRoutes from './routes/friend.routes';
 import notificationRoutes from './routes/notification.routes';
+import socketDocsRoutes from './routes/socket-docs.routes';
 import { errorHandler } from './middlewares/error.middleware';
 import { setupSwagger } from './config/swagger';
 import { initializeSocket } from './services/socket.service';
@@ -63,6 +64,7 @@ app.use('/api/posts', postRoutes);
 app.use('/api/chats', chatRoutes);
 app.use('/api/friends', friendRoutes);
 app.use('/api/notifications', notificationRoutes);
+app.use('/api/docs', socketDocsRoutes);
 
 app.use(errorHandler);
 

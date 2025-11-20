@@ -9,7 +9,7 @@ const getSwaggerDefinition = (): OAS3Definition => {
     SWAGGER_VERSION = '1.0.0',
     SWAGGER_CONTACT_NAME = 'API Support',
     SWAGGER_CONTACT_EMAIL = 'support@example.com',
-    SWAGGER_BASE_URL = 'http://localhost:3000',
+    SWAGGER_BASE_URL = 'http://localhost:5000',
   } = process.env;
 
   return {
@@ -17,11 +17,15 @@ const getSwaggerDefinition = (): OAS3Definition => {
     info: {
       title: SWAGGER_TITLE,
       version: SWAGGER_VERSION,
-      description: SWAGGER_DESCRIPTION,
+      description: `${SWAGGER_DESCRIPTION}\n\n## Real-time Events\n\nFor Socket.io real-time events documentation, see: [Socket.io Events Documentation](${SWAGGER_BASE_URL}/api/docs/socket-events)`,
       contact: {
         name: SWAGGER_CONTACT_NAME,
         email: SWAGGER_CONTACT_EMAIL,
       },
+    },
+    externalDocs: {
+      description: 'Socket.io Real-time Events (JSON)',
+      url: `${SWAGGER_BASE_URL}/api/docs/socket-events`,
     },
     servers: [
       {
@@ -47,7 +51,7 @@ const getSwaggerDefinition = (): OAS3Definition => {
 
 const createSwaggerOptions = (): OAS3Options => ({
   definition: getSwaggerDefinition(),
-  apis: ['src/routes/**/*.ts', 'src/controllers/**/*.ts', 'src/models/**/*.ts'],
+  apis: ['src/routes/**/*.ts', 'src/controllers/**/*.ts', 'src/models/**/*.ts', 'src/docs/**/*.ts'],
 });
 
 export const swaggerSpec = swaggerJsdoc(createSwaggerOptions());
