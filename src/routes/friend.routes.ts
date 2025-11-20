@@ -15,11 +15,29 @@ const router = Router();
  *           type: string
  *           description: Friend request ID
  *         from:
- *           type: string
- *           description: ID of user sending the request
+ *           type: object
+ *           description: User who sent the request
+ *           properties:
+ *             _id:
+ *               type: string
+ *             name:
+ *               type: string
+ *             email:
+ *               type: string
+ *             photo:
+ *               type: string
  *         to:
- *           type: string
- *           description: ID of user receiving the request
+ *           type: object
+ *           description: User who received the request
+ *           properties:
+ *             _id:
+ *               type: string
+ *             name:
+ *               type: string
+ *             email:
+ *               type: string
+ *             photo:
+ *               type: string
  *         status:
  *           type: string
  *           enum: [pending, accepted, rejected]
@@ -30,24 +48,32 @@ const router = Router();
  *         createdAt:
  *           type: string
  *           format: date-time
- *         updatedAt:
+ *     Friend:
+ *       type: object
+ *       properties:
+ *         _id:
  *           type: string
- *           format: date-time
+ *         name:
+ *           type: string
+ *         email:
+ *           type: string
+ *         photo:
+ *           type: string
  */
 
 /**
  * @swagger
  * tags:
  *   name: Friends
- *   description: Friend request management
+ *   description: Friend request and friendship management
  */
 
 /**
  * @swagger
- * /api/friends:
+ * /api/friends/request:
  *   post:
  *     summary: Send friend request
- *     description: Send a friend request to another user. Requires authentication.
+ *     description: Send a friend request to another user. Automatically checks if users are already friends or if a request already exists. Emits socket event to recipient.
  *     tags: [Friends]
  *     security:
  *       - bearerAuth: []
@@ -58,21 +84,16 @@ const router = Router();
  *           schema:
  *             type: object
  *             required:
- *               - from
- *               - to
+ *               - toUserId
  *             properties:
- *               from:
+ *               toUserId:
  *                 type: string
- *                 description: Sender user ID
- *               to:
- *                 type: string
- *                 description: Recipient user ID
+ *                 description: ID of the user to send friend request to
  *               triggeredFromPostId:
  *                 type: string
- *                 description: Optional post ID that triggered this request
+ *                 description: Optional post ID that triggered this request (e.g., from chat icon on post)
  *           example:
- *             from: "507f191e810c19729de860ea"
- *             to: "507f191e810c19729de860eb"
+ *             toUserId: "507f191e810c19729de860eb"
  *             triggeredFromPostId: "507f1f77bcf86cd799439011"
  *     responses:
  *       201:
@@ -80,93 +101,218 @@ const router = Router();
  *         content:
  *           application/json:
  *             schema:
- *               $ref: '#/components/schemas/FriendRequest'
- *             example:
- *               _id: "507f1f77bcf86cd799439012"
- *               from: "507f191e810c19729de860ea"
- *               to: "507f191e810c19729de860eb"
- *               status: "pending"
- *               triggeredFromPostId: "507f1f77bcf86cd799439011"
- *               createdAt: "2025-11-20T10:00:00.000Z"
- *               updatedAt: "2025-11-20T10:00:00.000Z"
+ *               type: object
+ *               properties:
+ *                 message:
+ *                   type: string
+ *                 request:
+ *                   $ref: '#/components/schemas/FriendRequest'
  *       400:
- *         description: Invalid input
- *         content:
- *           application/json:
- *             schema:
- *               $ref: '#/components/schemas/ErrorResponse'
- *             example:
- *               message: "Sender and recipient are required."
+ *         description: Bad request (already friends, request exists, invalid data)
  *       401:
  *         description: Unauthorized
- *         content:
- *           application/json:
- *             schema:
- *               $ref: '#/components/schemas/ErrorResponse'
+ *       404:
+ *         description: User not found
  */
-router.post('/', verifyToken, friendController.sendRequest);
+router.post('/request', verifyToken, friendController.sendFriendRequest);
 
 /**
  * @swagger
- * /api/friends/{id}:
- *   patch:
- *     summary: Respond to friend request
- *     description: Accept or reject a friend request. Requires authentication.
+ * /api/friends/accept/{requestId}:
+ *   post:
+ *     summary: Accept friend request
+ *     description: Accept a pending friend request. Updates both users' friends arrays and creates a chat room. Emits socket event to requester.
  *     tags: [Friends]
  *     security:
  *       - bearerAuth: []
  *     parameters:
  *       - in: path
- *         name: id
+ *         name: requestId
  *         required: true
  *         schema:
  *           type: string
- *         description: Friend request ID
- *     requestBody:
- *       required: true
- *       content:
- *         application/json:
- *           schema:
- *             type: object
- *             required:
- *               - status
- *             properties:
- *               status:
- *                 type: string
- *                 enum: [accepted, rejected]
- *                 description: New status for the friend request
- *           example:
- *             status: "accepted"
+ *         description: ID of the friend request to accept
  *     responses:
  *       200:
- *         description: Friend request updated successfully
+ *         description: Friend request accepted successfully
  *         content:
  *           application/json:
  *             schema:
- *               $ref: '#/components/schemas/FriendRequest'
- *             example:
- *               _id: "507f1f77bcf86cd799439012"
- *               from: "507f191e810c19729de860ea"
- *               to: "507f191e810c19729de860eb"
- *               status: "accepted"
- *               createdAt: "2025-11-20T10:00:00.000Z"
- *               updatedAt: "2025-11-20T10:05:00.000Z"
+ *               type: object
+ *               properties:
+ *                 message:
+ *                   type: string
+ *                 request:
+ *                   $ref: '#/components/schemas/FriendRequest'
+ *                 chatId:
+ *                   type: string
+ *                   description: ID of the created/existing chat room
+ *       400:
+ *         description: Request already processed or invalid request ID
  *       401:
  *         description: Unauthorized
- *         content:
- *           application/json:
- *             schema:
- *               $ref: '#/components/schemas/ErrorResponse'
+ *       403:
+ *         description: Not authorized to accept this request
  *       404:
- *         description: Friend request not found
+ *         description: Request not found
+ */
+router.post('/accept/:requestId', verifyToken, friendController.acceptFriendRequest);
+
+/**
+ * @swagger
+ * /api/friends/reject/{requestId}:
+ *   post:
+ *     summary: Reject friend request
+ *     description: Reject a pending friend request. Emits socket event to requester.
+ *     tags: [Friends]
+ *     security:
+ *       - bearerAuth: []
+ *     parameters:
+ *       - in: path
+ *         name: requestId
+ *         required: true
+ *         schema:
+ *           type: string
+ *         description: ID of the friend request to reject
+ *     responses:
+ *       200:
+ *         description: Friend request rejected successfully
  *         content:
  *           application/json:
  *             schema:
- *               $ref: '#/components/schemas/ErrorResponse'
- *             example:
- *               message: "Friend request not found."
+ *               type: object
+ *               properties:
+ *                 message:
+ *                   type: string
+ *                 request:
+ *                   $ref: '#/components/schemas/FriendRequest'
+ *       400:
+ *         description: Request already processed or invalid request ID
+ *       401:
+ *         description: Unauthorized
+ *       403:
+ *         description: Not authorized to reject this request
+ *       404:
+ *         description: Request not found
  */
-router.patch('/:id', verifyToken, friendController.respondRequest);
+router.post('/reject/:requestId', verifyToken, friendController.rejectFriendRequest);
+
+/**
+ * @swagger
+ * /api/friends/{friendId}:
+ *   delete:
+ *     summary: Unfriend a user
+ *     description: Remove a friend connection. Updates both users' friends arrays. Emits socket event to unfriended user.
+ *     tags: [Friends]
+ *     security:
+ *       - bearerAuth: []
+ *     parameters:
+ *       - in: path
+ *         name: friendId
+ *         required: true
+ *         schema:
+ *           type: string
+ *         description: ID of the friend to remove
+ *     responses:
+ *       200:
+ *         description: Friend removed successfully
+ *         content:
+ *           application/json:
+ *             schema:
+ *               type: object
+ *               properties:
+ *                 message:
+ *                   type: string
+ *       400:
+ *         description: Not friends with this user or invalid friend ID
+ *       401:
+ *         description: Unauthorized
+ *       404:
+ *         description: User not found
+ */
+router.delete('/:friendId', verifyToken, friendController.unfriend);
+
+/**
+ * @swagger
+ * /api/friends:
+ *   get:
+ *     summary: Get friends list
+ *     description: Get the authenticated user's friends list with user details
+ *     tags: [Friends]
+ *     security:
+ *       - bearerAuth: []
+ *     responses:
+ *       200:
+ *         description: Friends list retrieved successfully
+ *         content:
+ *           application/json:
+ *             schema:
+ *               type: object
+ *               properties:
+ *                 friends:
+ *                   type: array
+ *                   items:
+ *                     $ref: '#/components/schemas/Friend'
+ *                 count:
+ *                   type: integer
+ *                   description: Total number of friends
+ *             example:
+ *               friends:
+ *                 - _id: "507f191e810c19729de860ea"
+ *                   name: "John Doe"
+ *                   email: "john@example.com"
+ *                   photo: "https://example.com/photo.jpg"
+ *               count: 1
+ *       401:
+ *         description: Unauthorized
+ *       404:
+ *         description: User not found
+ */
+router.get('/', verifyToken, friendController.getFriends);
+
+/**
+ * @swagger
+ * /api/friends/requests:
+ *   get:
+ *     summary: Get pending friend requests
+ *     description: Get all pending friend requests received by the authenticated user, ordered by most recent
+ *     tags: [Friends]
+ *     security:
+ *       - bearerAuth: []
+ *     responses:
+ *       200:
+ *         description: Pending requests retrieved successfully
+ *         content:
+ *           application/json:
+ *             schema:
+ *               type: object
+ *               properties:
+ *                 requests:
+ *                   type: array
+ *                   items:
+ *                     $ref: '#/components/schemas/FriendRequest'
+ *                 count:
+ *                   type: integer
+ *                   description: Total number of pending requests
+ *             example:
+ *               requests:
+ *                 - _id: "507f1f77bcf86cd799439012"
+ *                   from:
+ *                     _id: "507f191e810c19729de860ea"
+ *                     name: "John Doe"
+ *                     email: "john@example.com"
+ *                     photo: "https://example.com/photo.jpg"
+ *                   to:
+ *                     _id: "507f191e810c19729de860eb"
+ *                     name: "Jane Smith"
+ *                     email: "jane@example.com"
+ *                   status: "pending"
+ *                   createdAt: "2025-11-20T10:00:00.000Z"
+ *               count: 1
+ *       401:
+ *         description: Unauthorized
+ */
+router.get('/requests', verifyToken, friendController.getPendingRequests);
 
 export default router;
 
