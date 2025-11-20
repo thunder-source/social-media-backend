@@ -1,58 +1,117 @@
-import { Request, Response, NextFunction } from 'express';
-import bcrypt from 'bcryptjs';
-import { User } from '../models/User';
+import passport from 'passport';
+import { CookieOptions, NextFunction, Request, Response } from 'express';
+import { Types } from 'mongoose';
+import { RequestWithUser } from '../types';
+import { IUser } from '../models/User';
 import { generateToken } from '../utils/jwt';
 
+type PassportUser = Express.User &
+  Omit<Partial<IUser>, '_id'> & {
+    _id?: Types.ObjectId | string;
+  };
+type SanitizedUser = {
+  id: string;
+  email?: string;
+  name?: string;
+  photo?: string;
+};
+
 class AuthController {
-  register = async (req: Request, res: Response, next: NextFunction): Promise<void> => {
-    try {
-      const { name, email, password } = req.body;
+  private readonly cookieName = process.env.AUTH_COOKIE_NAME ?? 'auth_token';
 
-      if (!name || !email || !password) {
-        res.status(400).json({ message: 'Name, email, and password are required.' });
-        return;
-      }
-
-      const existingUser = await User.findOne({ email });
-
-      if (existingUser) {
-        res.status(409).json({ message: 'User already exists.' });
-        return;
-      }
-
-      const hashedPassword = await bcrypt.hash(password, 10);
-      const user = await User.create({ name, email, password: hashedPassword });
-
-      res.status(201).json({ user });
-    } catch (error) {
-      next(error);
-    }
+  private readonly cookieOptions: CookieOptions = {
+    httpOnly: true,
+    secure: process.env.NODE_ENV === 'production',
+    sameSite: process.env.NODE_ENV === 'production' ? 'none' : 'lax',
+    maxAge: Number(process.env.JWT_COOKIE_MAX_AGE ?? 7 * 24 * 60 * 60 * 1000),
   };
 
-  login = async (req: Request, res: Response, next: NextFunction): Promise<void> => {
-    try {
-      const { email, password } = req.body;
-      const user = await User.findOne({ email });
+  private readonly successRedirect = process.env.GOOGLE_SUCCESS_REDIRECT;
+  private readonly failureRedirect = process.env.GOOGLE_FAILURE_REDIRECT;
 
-      if (!user || !user.password) {
-        res.status(401).json({ message: 'Invalid credentials.' });
+  googleAuth = passport.authenticate('google', {
+    scope: ['profile', 'email'],
+    session: false,
+    prompt: 'select_account',
+  });
+
+  googleCallback = (req: Request, res: Response, next: NextFunction): void => {
+    passport.authenticate('google', { session: false }, (error: Error | null, user?: PassportUser) => {
+      if (error) {
+        next(error);
         return;
       }
 
-      const isValid = await bcrypt.compare(password, user.password);
+      if (!user?._id) {
+        if (this.failureRedirect) {
+          res.redirect(this.failureRedirect);
+          return;
+        }
 
-      if (!isValid) {
-        res.status(401).json({ message: 'Invalid credentials.' });
+        res.status(401).json({ message: 'Google authentication failed.' });
         return;
       }
 
-      const token = generateToken({ id: user._id, email: user.email });
+      try {
+        const token = generateToken(user._id.toString());
+        const sanitizedUser = this.sanitizeUser(user);
 
-      res.json({ token, user });
-    } catch (error) {
-      next(error);
-    }
+        res.cookie(this.cookieName, token, this.cookieOptions);
+
+        if (this.successRedirect) {
+          res.redirect(this.successRedirect);
+          return;
+        }
+
+        res.status(200).json({ token, user: sanitizedUser });
+      } catch (tokenError) {
+        next(tokenError);
+      }
+    })(req, res, next);
   };
+
+  logout = (req: Request, res: Response): void => {
+    res.clearCookie(this.cookieName, {
+      httpOnly: this.cookieOptions.httpOnly,
+      secure: this.cookieOptions.secure,
+      sameSite: this.cookieOptions.sameSite,
+    });
+
+    this.logoutFromPassport(req);
+    res.status(200).json({ message: 'Logged out successfully.' });
+  };
+
+  getCurrentUser = (req: RequestWithUser, res: Response): void => {
+    if (!req.user) {
+      res.status(401).json({ message: 'Not authenticated.' });
+      return;
+    }
+
+    res.status(200).json({ user: req.user });
+  };
+
+  private sanitizeUser(user: PassportUser): SanitizedUser {
+    const id = user._id?.toString();
+
+    if (!id) {
+      throw new Error('Unable to determine user id.');
+    }
+
+    return {
+      id,
+      email: user.email,
+      name: user.name,
+      photo: user.photo,
+    };
+  }
+
+  private logoutFromPassport(req: Request): void {
+    const requestWithLogout = req as Request & {
+      logout?: (callback: (err?: unknown) => void) => void;
+    };
+
+    requestWithLogout.logout?.(() => undefined);
+  }
 }
 
 export const authController = new AuthController();

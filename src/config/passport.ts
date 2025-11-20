@@ -12,7 +12,7 @@ const createGoogleStrategyOptions = (): StrategyOptions => {
     return {
         clientID: GOOGLE_CLIENT_ID,
         clientSecret: GOOGLE_CLIENT_SECRET,
-        callbackURL: GOOGLE_CALLBACK_URL ?? '/auth/google/callback',
+        callbackURL: GOOGLE_CALLBACK_URL ?? '/api/auth/google/callback',
     };
 };
 

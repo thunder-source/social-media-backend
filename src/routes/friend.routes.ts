@@ -1,11 +1,11 @@
 import { Router } from 'express';
 import { friendController } from '../controllers/friend.controller';
-import { authenticate } from '../middlewares/auth.middleware';
+import { verifyToken } from '../middlewares/auth.middleware';
 
 const router = Router();
 
-router.post('/', authenticate, friendController.sendRequest);
-router.patch('/:id', authenticate, friendController.respondRequest);
+router.post('/', verifyToken, friendController.sendRequest);
+router.patch('/:id', verifyToken, friendController.respondRequest);
 
 export default router;
 

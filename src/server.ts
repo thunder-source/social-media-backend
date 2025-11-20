@@ -7,6 +7,7 @@ import compression from 'compression';
 import session from 'express-session';
 import passport from 'passport';
 import dotenv from 'dotenv';
+import cookieParser from 'cookie-parser';
 import { connectDatabase } from './config/database';
 import { configurePassport } from './config/passport';
 import authRoutes from './routes/auth.routes';
@@ -32,6 +33,7 @@ app.use(
 );
 app.use(express.json());
 app.use(express.urlencoded({ extended: true }));
+app.use(cookieParser());
 app.use(compression());
 app.use(morgan('dev'));
 

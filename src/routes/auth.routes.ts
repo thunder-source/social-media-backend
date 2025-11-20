@@ -1,19 +1,14 @@
 import { Router } from 'express';
-import passport from 'passport';
 import { authController } from '../controllers/auth.controller';
+import { verifyToken } from '../middlewares/auth.middleware';
 
 const router = Router();
 
-router.post('/register', authController.register);
-router.post('/login', authController.login);
-router.get('/google', passport.authenticate('google', { scope: ['profile', 'email'] }));
-router.get(
-  '/google/callback',
-  passport.authenticate('google', { failureRedirect: '/login', session: false }),
-  (_req, res) => {
-    res.redirect(process.env.GOOGLE_SUCCESS_REDIRECT ?? '/');
-  }
-);
+router.get('/google', authController.googleAuth);
+router.get('/google/callback', authController.googleCallback);
+router.post('/logout', authController.logout);
+router.get('/me', verifyToken, authController.getCurrentUser);
 
 export default router;
+
 

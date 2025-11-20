@@ -1,7 +1,16 @@
 import { Request } from 'express';
-import { JwtPayload } from 'jsonwebtoken';
 
-export interface RequestWithUser extends Request {
-  user?: (JwtPayload & { id?: string }) | { id?: string } | string;
+export interface AuthenticatedUser {
+  id: string;
+  email?: string;
+  name?: string;
+  photo?: string;
 }
+
+export type RequestWithUser = Request & {
+  user?: AuthenticatedUser | Express.User;
+};
+
+
+
 
