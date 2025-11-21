@@ -36,10 +36,10 @@ export const compressVideo = async (fileBuffer: Buffer, originalName: string): P
       ffmpeg(inputPath)
         .output(outputPath)
         .videoCodec('libx264')
-        .size('?x720') // Resize to 720p max height, keeping aspect ratio
-        .videoBitrate('1000k') // Target bitrate 1000kbps
+        .size('?x480') // Resize to 480p max height for better compression
+        .videoBitrate('500k') // Target bitrate 500kbps
         .audioCodec('aac')
-        .audioBitrate('128k')
+        .audioBitrate('64k') // Lower audio bitrate
         .on('end', () => resolve())
         .on('error', (err: any) => reject(err))
         .run();

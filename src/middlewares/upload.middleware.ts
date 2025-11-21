@@ -16,9 +16,9 @@ const fileFilter = (req: Request, file: Express.Multer.File, cb: multer.FileFilt
   }
 };
 
-// Size limits: 10MB for images, 100MB for videos
-const MAX_IMAGE_SIZE = 10 * 1024 * 1024; // 10MB
-const MAX_VIDEO_SIZE = 100 * 1024 * 1024; // 100MB
+// Size limits: 500KB for images, 20MB for videos
+const MAX_IMAGE_SIZE = 500 * 1024; // 500KB
+const MAX_VIDEO_SIZE = 30 * 1024 * 1024; // 30MB
 
 // Custom limits based on file type
 const limits = {
@@ -42,13 +42,13 @@ export const validateFileSize = (req: Request, res: any, next: any) => {
 
   if (isImage && req.file.size > MAX_IMAGE_SIZE) {
     return res.status(400).json({
-      message: `Image file size exceeds the limit of ${MAX_IMAGE_SIZE / 1024 / 1024}MB`,
+      message: `Image file size exceeds the limit of 500KB`,
     });
   }
 
   if (isVideo && req.file.size > MAX_VIDEO_SIZE) {
     return res.status(400).json({
-      message: `Video file size exceeds the limit of ${MAX_VIDEO_SIZE / 1024 / 1024}MB`,
+      message: `Video file size exceeds the limit of 20MB`,
     });
   }
 
