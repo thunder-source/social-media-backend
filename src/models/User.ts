@@ -10,6 +10,7 @@ export interface IUser {
   createdAt?: Date;
   updatedAt?: Date;
   friendsCount?: number;
+  pushSubscription?: any;
   _id?: boolean;
 }
 
@@ -44,6 +45,10 @@ const UserSchema = new Schema<IUser, UserModel>(
     friends: {
       type: [{ type: Schema.Types.ObjectId, ref: 'User' }],
       default: [],
+    },
+    pushSubscription: {
+      type: Object, // Store the whole subscription object
+      default: null,
     },
   },
   {

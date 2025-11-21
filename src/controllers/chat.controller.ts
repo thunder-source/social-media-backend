@@ -3,6 +3,7 @@ import { Types } from 'mongoose';
 import { Chat } from '../models/Chat';
 import { Message } from '../models/Message';
 import { RequestWithUser } from '../types';
+import { createAndEmit } from '../services/notification.service';
 
 class ChatController {
   /**
@@ -198,6 +199,17 @@ class ChatController {
         lastMessage: message._id,
         updatedAt: new Date()
       });
+
+      // Notify other participants
+      const otherParticipants = chat.participants.filter(
+        (p) => p.toString() !== senderId
+      );
+      
+      for (const participantId of otherParticipants) {
+        await createAndEmit(participantId.toString(), 'new_message', {
+          fromUserId: senderId,
+        });
+      }
 
       // Populate message before returning
       const populatedMessage = await Message.findById(message._id)

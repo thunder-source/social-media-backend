@@ -2,9 +2,10 @@ import { Schema, Types, model, HydratedDocument, Model } from 'mongoose';
 
 export type NotificationType =
   | 'friend_request'
-  | 'message'
-  | 'like'
-  | 'comment';
+  | 'friend_accepted'
+  | 'new_message'
+  | 'post_like'
+  | 'post_comment';
 
 export interface INotification {
   userId: Types.ObjectId;
@@ -25,7 +26,7 @@ const NotificationSchema = new Schema<INotification, NotificationModel>(
     userId: { type: Schema.Types.ObjectId, ref: 'User', required: true },
     type: {
       type: String,
-      enum: ['friend_request', 'message', 'like', 'comment'],
+      enum: ['friend_request', 'friend_accepted', 'new_message', 'post_like', 'post_comment'],
       required: true,
     },
     fromUser: { type: Schema.Types.ObjectId, ref: 'User', required: true },

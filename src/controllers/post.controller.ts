@@ -4,6 +4,7 @@ import { RequestWithUser, AuthenticatedUser } from '../types';
 import { uploadToFirebase, deleteFromFirebase } from '../services/firebase.service';
 import { Types } from 'mongoose';
 import { compressVideo } from '../services/video.service';
+import { createAndEmit } from '../services/notification.service';
 
 class PostController {
   /**
@@ -279,6 +280,14 @@ class PostController {
           post.likes = [];
         }
         post.likes.push(userObjectId);
+        
+        // Send notification if liking someone else's post
+        if (post.userId.toString() !== user.id) {
+          await createAndEmit(post.userId.toString(), 'post_like', {
+            fromUserId: user.id,
+            postId: post._id.toString(),
+          });
+        }
       }
 
       await post.save();
@@ -329,6 +338,14 @@ class PostController {
 
       post.comments.push(comment);
       await post.save();
+
+      // Send notification if commenting on someone else's post
+      if (post.userId.toString() !== user.id) {
+        await createAndEmit(post.userId.toString(), 'post_comment', {
+          fromUserId: user.id,
+          postId: post._id.toString(),
+        });
+      }
 
       // Populate user info for response
       await post.populate('userId', '-password');

@@ -5,6 +5,7 @@ import { User } from '../models/User';
 import { Chat } from '../models/Chat';
 import { RequestWithUser } from '../types';
 import { socketService } from '../services/socket.service';
+import { createAndEmit } from '../services/notification.service';
 
 class FriendController {
   /**
@@ -98,6 +99,12 @@ class FriendController {
       } catch (socketError) {
         console.error('Socket emission error:', socketError);
       }
+
+      // Create notification
+      await createAndEmit(toUserId, 'friend_request', {
+        fromUserId,
+        friendRequestId: friendRequest._id.toString(),
+      });
 
       res.status(201).json({
         message: 'Friend request sent successfully.',
@@ -194,6 +201,12 @@ class FriendController {
       } catch (socketError) {
         console.error('Socket emission error:', socketError);
       }
+
+      // Create notification
+      await createAndEmit(fromUserId, 'friend_accepted', {
+        fromUserId: userId,
+        friendRequestId: requestId,
+      });
 
       res.json({
         message: 'Friend request accepted successfully.',
