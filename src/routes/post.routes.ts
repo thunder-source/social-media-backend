@@ -98,7 +98,7 @@ const router = Router();
  *         text:
  *           type: string
  *           description: Post content
- *         media:
+ *         file:
  *           type: string
  *           format: binary
  *           description: Image or video file (max 10MB for images, 100MB for videos)
@@ -109,7 +109,7 @@ const router = Router();
  *         text:
  *           type: string
  *           description: Updated post content
- *         media:
+ *         file:
  *           type: string
  *           format: binary
  *           description: New image or video file
@@ -162,7 +162,7 @@ const router = Router();
  *               summary: Post with image
  *               value:
  *                 text: "Check out this photo!"
- *                 media: "[binary file data]"
+ *                 file: "[binary file data]"
  *     responses:
  *       201:
  *         description: Post created successfully
@@ -193,7 +193,8 @@ const router = Router();
  *             schema:
  *               $ref: '#/components/schemas/ErrorResponse'
  */
-router.post('/', verifyToken, upload.single('media'), validateFileSize, postController.createPost);
+
+router.post('/', verifyToken, upload.single('file'), validateFileSize, postController.createPost);
 
 /**
  * @swagger
@@ -317,7 +318,7 @@ router.get('/:id', postController.getPostById);
  *               summary: Update text and media
  *               value:
  *                 text: "Updated with new image"
- *                 media: "[binary file data]"
+ *                 file: "[binary file data]"
  *     responses:
  *       200:
  *         description: Post updated successfully
@@ -352,7 +353,7 @@ router.get('/:id', postController.getPostById);
  *             schema:
  *               $ref: '#/components/schemas/ErrorResponse'
  */
-router.put('/:id', verifyToken, upload.single('media'), validateFileSize, postController.updatePost);
+router.put('/:id', verifyToken, upload.single('file'), validateFileSize, postController.updatePost);
 
 /**
  * @swagger
@@ -515,4 +516,3 @@ router.post('/:id/like', verifyToken, postController.likePost);
 router.post('/:id/comment', verifyToken, postController.addComment);
 
 export default router;
-

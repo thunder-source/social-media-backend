@@ -62,6 +62,7 @@ app.use('/api/auth', authRoutes);
 app.use('/api/users', userRoutes);
 app.use('/api/posts', postRoutes);
 app.use('/api/chats', chatRoutes);
+app.use('/api/messages', chatRoutes); // For /api/messages/:messageId/read endpoint
 app.use('/api/friends', friendRoutes);
 app.use('/api/notifications', notificationRoutes);
 app.use('/api/docs', socketDocsRoutes);

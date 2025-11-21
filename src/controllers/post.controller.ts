@@ -3,6 +3,7 @@ import { Post } from '../models/Post';
 import { RequestWithUser, AuthenticatedUser } from '../types';
 import { uploadToFirebase, deleteFromFirebase } from '../services/firebase.service';
 import { Types } from 'mongoose';
+import { compressVideo } from '../services/video.service';
 
 class PostController {
   /**
@@ -26,7 +27,28 @@ class PostController {
 
       // Handle file upload
       if (file) {
-        mediaUrl = await uploadToFirebase(file, 'posts');
+        let fileToUpload = file;
+
+        // Compress video if it's a video file
+        if (file.mimetype.startsWith('video/')) {
+          try {
+            console.log('Compressing video...');
+            const compressedBuffer = await compressVideo(file.buffer, file.originalname);
+            
+            // Create a new file object with compressed buffer
+            fileToUpload = {
+              ...file,
+              buffer: compressedBuffer,
+              size: compressedBuffer.length
+            };
+            console.log(`Video compressed. Original size: ${file.size}, New size: ${fileToUpload.size}`);
+          } catch (error) {
+            console.error("Video compression failed, uploading original file:", error);
+            // Fallback to original file if compression fails
+          }
+        }
+
+        mediaUrl = await uploadToFirebase(fileToUpload, 'posts');
         mediaType = file.mimetype.startsWith('image/') ? 'image' : 'video';
       }
 
@@ -149,8 +171,29 @@ class PostController {
           await deleteFromFirebase(post.mediaUrl);
         }
 
+        let fileToUpload = file;
+
+        // Compress video if it's a video file
+        if (file.mimetype.startsWith('video/')) {
+          try {
+            console.log('Compressing video...');
+            const compressedBuffer = await compressVideo(file.buffer, file.originalname);
+            
+            // Create a new file object with compressed buffer
+            fileToUpload = {
+              ...file,
+              buffer: compressedBuffer,
+              size: compressedBuffer.length
+            };
+            console.log(`Video compressed. Original size: ${file.size}, New size: ${fileToUpload.size}`);
+          } catch (error) {
+            console.error("Video compression failed, uploading original file:", error);
+            // Fallback to original file if compression fails
+          }
+        }
+
         // Upload new media
-        post.mediaUrl = await uploadToFirebase(file, 'posts');
+        post.mediaUrl = await uploadToFirebase(fileToUpload, 'posts');
         post.mediaType = file.mimetype.startsWith('image/') ? 'image' : 'video';
       }
 
@@ -299,4 +342,3 @@ class PostController {
 }
 
 export const postController = new PostController();
-

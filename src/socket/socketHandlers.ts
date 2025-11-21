@@ -1,6 +1,9 @@
 import { Server, Socket } from 'socket.io';
+import { Types } from 'mongoose';
 import { verifyToken } from '../utils/jwt';
 import type { SocketService } from '../services/socket.service';
+import { Message } from '../models/Message';
+import { Chat } from '../models/Chat';
 
 interface AuthenticatedSocket extends Socket {
   userId?: string;
@@ -102,29 +105,143 @@ const handleConnection = (socket: AuthenticatedSocket, socketService: SocketServ
     }
   });
 
-  // Handle new message event (for real-time delivery)
-  socket.on('message:new', (data: { recipientId: string; message: any }) => {
-    console.log(`User ${userId} sent message to ${data.recipientId}`);
-    
-    if (data.recipientId) {
+  /**
+   * Handle send_message event - save to DB and emit to recipient
+   */
+  socket.on('send_message', async (data: { chatId: string; text: string; recipientId: string }) => {
+    try {
+      console.log(`User ${userId} sending message in chat ${data.chatId}`);
+
+      if (!data.chatId || !data.text || !data.recipientId) {
+        socket.emit('error', { message: 'Missing required fields: chatId, text, recipientId' });
+        return;
+      }
+
+      if (!Types.ObjectId.isValid(data.chatId)) {
+        socket.emit('error', { message: 'Invalid chat ID' });
+        return;
+      }
+
+      // Verify chat exists and user is participant
+      const chat = await Chat.findById(data.chatId);
+      if (!chat) {
+        socket.emit('error', { message: 'Chat not found' });
+        return;
+      }
+
+      const isParticipant = chat.participants.some(
+        (participantId) => participantId.toString() === userId
+      );
+
+      if (!isParticipant) {
+        socket.emit('error', { message: 'You are not a participant in this chat' });
+        return;
+      }
+
+      // Create message with sender already in readBy
+      const message = await Message.create({
+        chatId: new Types.ObjectId(data.chatId),
+        senderId: new Types.ObjectId(userId),
+        text: data.text.trim(),
+        readBy: [new Types.ObjectId(userId)]
+      });
+
+      // Update chat's lastMessage and updatedAt
+      await Chat.findByIdAndUpdate(data.chatId, {
+        lastMessage: message._id,
+        updatedAt: new Date()
+      });
+
+      // Populate message
+      const populatedMessage = await Message.findById(message._id)
+        .populate('senderId', 'name email photo')
+        .populate('readBy', 'name email photo');
+
+      // Emit to recipient if online
       socketService.emitToUser(data.recipientId, 'message:new', {
-        message: data.message,
-        senderId: userId,
+        message: populatedMessage,
+        chatId: data.chatId,
         timestamp: new Date().toISOString(),
       });
+
+      // Send acknowledgment to sender
+      socket.emit('message:sent', {
+        message: populatedMessage,
+        chatId: data.chatId,
+        timestamp: new Date().toISOString(),
+      });
+
+      console.log(`Message saved and sent to recipient ${data.recipientId}`);
+    } catch (error) {
+      console.error('Error handling send_message:', error);
+      socket.emit('error', { message: 'Failed to send message' });
     }
   });
 
-  // Handle message read event
-  socket.on('message:read', (data: { messageId: string; senderId: string }) => {
-    console.log(`User ${userId} read message ${data.messageId}`);
-    
-    if (data.senderId) {
+  /**
+   * Handle message_read event - update DB and emit to sender
+   */
+  socket.on('message_read', async (data: { messageId: string; senderId: string }) => {
+    try {
+      console.log(`User ${userId} marking message ${data.messageId} as read`);
+
+      if (!data.messageId || !data.senderId) {
+        socket.emit('error', { message: 'Missing required fields: messageId, senderId' });
+        return;
+      }
+
+      if (!Types.ObjectId.isValid(data.messageId)) {
+        socket.emit('error', { message: 'Invalid message ID' });
+        return;
+      }
+
+      const message = await Message.findById(data.messageId);
+
+      if (!message) {
+        socket.emit('error', { message: 'Message not found' });
+        return;
+      }
+
+      // Verify user is participant in the chat
+      const chat = await Chat.findById(message.chatId);
+
+      if (!chat) {
+        socket.emit('error', { message: 'Chat not found' });
+        return;
+      }
+
+      const isParticipant = chat.participants.some(
+        (participantId) => participantId.toString() === userId
+      );
+
+      if (!isParticipant) {
+        socket.emit('error', { message: 'You are not a participant in this chat' });
+        return;
+      }
+
+      // Add user to readBy if not already there
+      const userObjectId = new Types.ObjectId(userId);
+      const alreadyRead = message.readBy?.some(
+        (readByUserId) => readByUserId.toString() === userId
+      );
+
+      if (!alreadyRead) {
+        await Message.findByIdAndUpdate(data.messageId, {
+          $addToSet: { readBy: userObjectId }
+        });
+      }
+
+      // Emit to sender if online
       socketService.emitToUser(data.senderId, 'message:read', {
         messageId: data.messageId,
         readBy: userId,
         timestamp: new Date().toISOString(),
       });
+
+      console.log(`Message ${data.messageId} marked as read by ${userId}`);
+    } catch (error) {
+      console.error('Error handling message_read:', error);
+      socket.emit('error', { message: 'Failed to mark message as read' });
     }
   });
 
@@ -164,4 +281,5 @@ export const registerSocketHandlers = (io: Server, socketService: SocketService)
 
   console.log('Socket handlers registered successfully');
 };
+
 

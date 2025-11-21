@@ -7,6 +7,7 @@ export const errorHandler = (
   res: Response,
   _next: NextFunction
 ): void => {
+  console.error('Error caught in global handler:', err);
   const status = res.statusCode >= 400 ? res.statusCode : 500;
   res.status(status).json({
     message: err.message || 'Internal server error',
