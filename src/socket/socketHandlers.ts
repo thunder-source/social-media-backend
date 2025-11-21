@@ -14,7 +14,19 @@ const authenticateSocket = async (
   next: (err?: Error) => void
 ): Promise<void> => {
   try {
-    const token = socket.handshake.auth?.token as string | undefined;
+    let token = socket.handshake.auth?.token as string | undefined;
+
+    if (!token && socket.handshake.headers.cookie) {
+      const cookies = socket.handshake.headers.cookie;
+      const tokenMatch = cookies.match(/auth_token=([^;]+)/);
+      if (tokenMatch) {
+        token = tokenMatch[1];
+      }
+    }
+
+    if (token && token.startsWith('Bearer ')) {
+      token = token.slice(7, token.length);
+    }
 
     if (!token) {
       return next(new Error('Authentication token missing'));
