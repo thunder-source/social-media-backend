@@ -65,6 +65,20 @@
  *       }
  *       ```
  *       
+ *       #### `friends:online`
+ *       Emitted in response to `get_online_friends` event.
+ *       
+ *       **Payload:**
+ *       ```json
+ *       {
+ *         "onlineFriends": [
+ *           "507f1f77bcf86cd799439011",
+ *           "507f1f77bcf86cd799439012"
+ *         ],
+ *         "timestamp": "2025-11-20T10:00:00.000Z"
+ *       }
+ *       ```
+ *       
  *       ### Friend Request Events
  *       
  *       #### `friend:request:received`
@@ -215,6 +229,16 @@
  *       **Parameters:**
  *       - `chatId` (string, required): ID of the chat
  *       - `recipientId` (string, required): ID of the recipient user
+ *       
+ *       ### Friend Events
+ *       
+ *       #### `get_online_friends`
+ *       Request list of currently online friends.
+ *       
+ *       **Emit:**
+ *       ```javascript
+ *       socket.emit('get_online_friends');
+ *       ```
  *       
  *       ### Messaging Events
  *       

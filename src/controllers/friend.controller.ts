@@ -363,16 +363,22 @@ class FriendController {
       const user = await User.findById(userId).populate(
         'friends',
         'name email photo'
-      );
+      ).lean();
 
       if (!user) {
         res.status(404).json({ message: 'User not found.' });
         return;
       }
 
+      const friendsWithStatus = (user.friends || []).map((friend: any) => ({
+        ...friend,
+        _id: friend._id.toString(),
+        isOnline: socketService.isUserOnline(friend._id.toString()),
+      }));
+
       res.json({
-        friends: user.friends || [],
-        count: user.friends?.length || 0,
+        friends: friendsWithStatus,
+        count: friendsWithStatus.length,
       });
     } catch (error) {
       next(error);

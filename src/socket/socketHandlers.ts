@@ -4,6 +4,7 @@ import { verifyToken } from '../utils/jwt';
 import type { SocketService } from '../services/socket.service';
 import { Message } from '../models/Message';
 import { Chat } from '../models/Chat';
+import { User } from '../models/User';
 
 interface AuthenticatedSocket extends Socket {
   userId?: string;
@@ -102,6 +103,32 @@ const handleConnection = (socket: AuthenticatedSocket, socketService: SocketServ
         userId,
         timestamp: new Date().toISOString(),
       });
+    }
+  });
+
+  /**
+   * Handle get_online_friends event
+   */
+  socket.on('get_online_friends', async () => {
+    try {
+      const user = await User.findById(userId).select('friends');
+      console.log('get_online_friends',user);
+      if (!user || !user.friends) {
+        socket.emit('friends:online', { onlineFriends: [] });
+        return;
+      }
+
+      const onlineFriends = user.friends
+        .map(friendId => friendId.toString())
+        .filter(friendId => socketService.isUserOnline(friendId));
+
+      socket.emit('friends:online', { 
+        onlineFriends,
+        timestamp: new Date().toISOString()
+      });
+    } catch (error) {
+      console.error('Error getting online friends:', error);
+      socket.emit('error', { message: 'Failed to get online friends' });
     }
   });
 

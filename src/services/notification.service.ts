@@ -65,7 +65,14 @@ export const createAndEmit = async (
   // Emit via Socket.IO
   try {
     const io = getSocket();
-    io.to(userId.toString()).emit('notification', notification);
+    
+    // Populate the notification for socket emission
+    const populatedNotification = await Notification.findById(notification._id)
+      .populate('fromUser', 'name photo friendsCount')
+      .populate('postId', 'likesCount commentsCount')
+      .populate('friendRequestId');
+
+    io.to(userId.toString()).emit('notification', populatedNotification);
   } catch (error) {
     console.error('Socket emit error:', error);
   }
