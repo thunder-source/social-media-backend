@@ -82,11 +82,13 @@ const startServer = async (): Promise<void> => {
   });
 };
 
-startServer().catch((error) => {
-  // eslint-disable-next-line no-console
-  console.error('Failed to start server', error);
-  process.exit(1);
-});
+if (require.main === module) {
+  startServer().catch((error) => {
+    // eslint-disable-next-line no-console
+    console.error('Failed to start server', error);
+    process.exit(1);
+  });
+}
 
 export { app };
 
