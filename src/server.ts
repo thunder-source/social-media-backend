@@ -19,6 +19,7 @@ import chatRoutes from './routes/chat.routes';
 import friendRoutes from './routes/friend.routes';
 import notificationRoutes from './routes/notification.routes';
 import socketDocsRoutes from './routes/socket-docs.routes';
+import healthRoutes from './routes/health.routes';
 import { errorHandler } from './middlewares/error.middleware';
 import { setupSwagger } from './config/swagger';
 import { initializeSocket } from './services/socket.service';
@@ -54,9 +55,7 @@ app.use(passport.session());
 configurePassport();
 setupSwagger(app);
 
-app.get('/health', (_req, res) => {
-  res.json({ status: 'ok' });
-});
+app.use('/health', healthRoutes);
 
 app.use('/api/auth', authRoutes);
 app.use('/api/users', userRoutes);
