@@ -9,19 +9,33 @@ class NotificationController {
       const user = req.user as AuthenticatedUser;
       const userId = user.id;
       const { unreadOnly } = req.query;
+      const page = parseInt(req.query.page as string) || 1;
+      const limit = parseInt(req.query.limit as string) || 10;
+      const skip = (page - 1) * limit;
 
       const query: any = { userId };
       if (unreadOnly === 'true') {
         query.read = false;
       }
 
-      const notifications = await Notification.find(query)
-        .sort({ createdAt: -1 })
-        .populate('fromUser', 'name photo')
-        .populate('postId', 'content')
-        .limit(50);
+      const [notifications, totalNotifications] = await Promise.all([
+        Notification.find(query)
+          .sort({ createdAt: -1 })
+          .skip(skip)
+          .limit(limit)
+          .populate('fromUser', 'name photo')
+          .populate('postId', 'content'),
+        Notification.countDocuments(query)
+      ]);
 
-      res.json(notifications);
+      const totalPages = Math.ceil(totalNotifications / limit);
+
+      res.json({
+        notifications,
+        currentPage: page,
+        totalPages,
+        totalNotifications
+      });
     } catch (error) {
       next(error);
     }

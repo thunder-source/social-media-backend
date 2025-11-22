@@ -25,9 +25,21 @@ const router = Router();
  *         schema:
  *           type: boolean
  *         description: Filter by unread status
+ *       - in: query
+ *         name: page
+ *         schema:
+ *           type: integer
+ *           default: 1
+ *         description: Page number
+ *       - in: query
+ *         name: limit
+ *         schema:
+ *           type: integer
+ *           default: 10
+ *         description: Number of items per page
  *     responses:
  *       200:
- *         description: List of notifications
+ *         description: List of notifications with pagination info
  */
 router.get('/', verifyToken, notificationController.getNotifications);
 

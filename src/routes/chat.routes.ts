@@ -283,7 +283,7 @@ router.post('/:chatId/messages', verifyToken, chatController.sendMessage);
  *       404:
  *         description: Message or chat not found
  */
-router.put('/messages/:messageId/read', verifyToken, chatController.markAsRead);
+router.put('/:messageId/read', verifyToken, chatController.markAsRead);
 
 export default router;
 

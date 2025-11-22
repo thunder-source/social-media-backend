@@ -4,6 +4,7 @@ import { Chat } from '../models/Chat';
 import { Message } from '../models/Message';
 import { RequestWithUser } from '../types';
 import { createAndEmit } from '../services/notification.service';
+import { socketService } from '../services/socket.service';
 
 class ChatController {
   /**
@@ -274,6 +275,25 @@ class ChatController {
       const updatedMessage = await Message.findById(messageId)
         .populate('senderId', 'name email photo')
         .populate('readBy', 'name email photo');
+
+      // Emit socket event to the sender
+      try {
+        // Only emit if the reader is not the sender (which should always be true for read receipts)
+        if (message.senderId.toString() !== userId) {
+          socketService.emitToUser(message.senderId.toString(), 'message:read', {
+            messageId: message._id,
+            chatId: message.chatId,
+            readBy: userId,
+            user: {
+              _id: userId,
+              name: (req.user as any).name,
+              photo: (req.user as any).photo
+            }
+          });
+        }
+      } catch (socketError) {
+        console.error('Socket emission error:', socketError);
+      }
 
       res.status(200).json(updatedMessage);
     } catch (error) {
