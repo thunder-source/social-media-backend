@@ -21,13 +21,10 @@ class AuthController {
 
   private readonly cookieOptions: CookieOptions = {
     httpOnly: true,
-    // Must be true for production (HTTPS required for sameSite: 'none')
-    secure: process.env.NODE_ENV === 'production',
-    // 'none' is required for cross-origin requests in production
-    sameSite: process.env.NODE_ENV === 'production' ? 'none' : 'lax',
+    secure: true, // Required for HTTPS (Render uses HTTPS)
+    sameSite: 'none', // Required for cross-origin (Vercel ↔ Render)
     maxAge: Number(process.env.JWT_COOKIE_MAX_AGE ?? 7 * 24 * 60 * 60 * 1000),
-    // Don't set domain - let browser handle it for cross-origin cookies
-    domain: "https://social.pradityamanjhi.in",
+    domain: undefined,
   };
 
   private readonly successRedirect = process.env.GOOGLE_SUCCESS_REDIRECT;
