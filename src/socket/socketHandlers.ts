@@ -112,7 +112,6 @@ const handleConnection = (socket: AuthenticatedSocket, socketService: SocketServ
   socket.on('get_online_friends', async () => {
     try {
       const user = await User.findById(userId).select('friends');
-      console.log('get_online_friends',user);
       if (!user || !user.friends) {
         socket.emit('friends:online', { onlineFriends: [] });
         return;
