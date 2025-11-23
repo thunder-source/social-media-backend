@@ -57,15 +57,19 @@ class AuthController {
         const token = generateToken(user._id.toString());
         const sanitizedUser = this.sanitizeUser(user);
 
+        // Set cookie (works if not blocked)
         res.cookie(this.cookieName, token, this.cookieOptions);
 
         if (this.successRedirect) {
+          // Always include token in redirect URL for localStorage fallback
           const redirectUrl = new URL(this.successRedirect);
           redirectUrl.searchParams.set('token', token);
+          redirectUrl.searchParams.set('user', JSON.stringify(sanitizedUser));
           res.redirect(redirectUrl.toString());
           return;
         }
 
+        // Always return token in response
         res.status(200).json({ token, user: sanitizedUser });
       } catch (tokenError) {
         next(tokenError);
