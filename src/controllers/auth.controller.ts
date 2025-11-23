@@ -21,9 +21,10 @@ class AuthController {
 
   private readonly cookieOptions: CookieOptions = {
     httpOnly: true,
-    secure: process.env.NODE_ENV === 'production',
-    sameSite: process.env.NODE_ENV === 'production' ? 'none' : 'lax',
+    secure: process.env.COOKIE_SECURE === 'true' || process.env.NODE_ENV === 'production',
+    sameSite: (process.env.COOKIE_SAME_SITE as 'lax' | 'strict' | 'none') || (process.env.NODE_ENV === 'production' ? 'none' : 'lax'),
     maxAge: Number(process.env.JWT_COOKIE_MAX_AGE ?? 7 * 24 * 60 * 60 * 1000),
+    domain: process.env.COOKIE_DOMAIN,
   };
 
   private readonly successRedirect = process.env.GOOGLE_SUCCESS_REDIRECT;
@@ -75,6 +76,7 @@ class AuthController {
       httpOnly: this.cookieOptions.httpOnly,
       secure: this.cookieOptions.secure,
       sameSite: this.cookieOptions.sameSite,
+      domain: this.cookieOptions.domain,
     });
 
     this.logoutFromPassport(req);
