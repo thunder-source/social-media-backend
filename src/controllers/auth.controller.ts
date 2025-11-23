@@ -27,7 +27,7 @@ class AuthController {
     sameSite: process.env.NODE_ENV === 'production' ? 'none' : 'lax',
     maxAge: Number(process.env.JWT_COOKIE_MAX_AGE ?? 7 * 24 * 60 * 60 * 1000),
     // Don't set domain - let browser handle it for cross-origin cookies
-    domain: undefined,
+    domain: "https://social.pradityamanjhi.in",
   };
 
   private readonly successRedirect = process.env.GOOGLE_SUCCESS_REDIRECT;
