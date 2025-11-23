@@ -60,7 +60,9 @@ class AuthController {
         res.cookie(this.cookieName, token, this.cookieOptions);
 
         if (this.successRedirect) {
-          res.redirect(this.successRedirect);
+          const redirectUrl = new URL(this.successRedirect);
+          redirectUrl.searchParams.set('token', token);
+          res.redirect(redirectUrl.toString());
           return;
         }
 
