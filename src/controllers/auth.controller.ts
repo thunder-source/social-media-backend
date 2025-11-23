@@ -21,10 +21,13 @@ class AuthController {
 
   private readonly cookieOptions: CookieOptions = {
     httpOnly: true,
-    secure: process.env.COOKIE_SECURE === 'true' || process.env.NODE_ENV === 'production',
-    sameSite: (process.env.COOKIE_SAME_SITE as 'lax' | 'strict' | 'none') || (process.env.NODE_ENV === 'production' ? 'none' : 'lax'),
+    // Must be true for production (HTTPS required for sameSite: 'none')
+    secure: process.env.NODE_ENV === 'production',
+    // 'none' is required for cross-origin requests in production
+    sameSite: process.env.NODE_ENV === 'production' ? 'none' : 'lax',
     maxAge: Number(process.env.JWT_COOKIE_MAX_AGE ?? 7 * 24 * 60 * 60 * 1000),
-    domain: process.env.COOKIE_DOMAIN,
+    // Don't set domain - let browser handle it for cross-origin cookies
+    domain: undefined,
   };
 
   private readonly successRedirect = process.env.GOOGLE_SUCCESS_REDIRECT;
