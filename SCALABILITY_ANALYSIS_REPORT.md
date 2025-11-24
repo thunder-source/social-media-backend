@@ -74,7 +74,7 @@ await new Promise<void>((resolve, reject) => { ffmpeg(inputPath)... })
 
 ### Phase 2: Performance Stability (Next 10K Users)
 *   [x] **Queues:** Implement BullMQ for video processing.
-*   [ ] **Database:** Extract `Friends` and `Likes` to separate collections.
+*   [x] **Database:** Extract `Friends` and `Likes` to separate collections.
 *   [ ] **CDN:** Serve static assets (images/videos) via CloudFront/S3, not the backend.
 
 ### Phase 3: High Scale (100K+ Users)
