@@ -13,6 +13,7 @@ export interface IPost {
   text: string;
   mediaUrl?: string;
   mediaType?: MediaType;
+  processingStatus?: 'pending' | 'processing' | 'completed' | 'failed';
   likes?: Types.ObjectId[];
   comments?: IPostComment[];
   createdAt?: Date;
@@ -59,6 +60,11 @@ const PostSchema = new Schema<IPost, PostModel>(
       type: String,
       enum: ['image', 'video', null],
       default: null,
+    },
+    processingStatus: {
+      type: String,
+      enum: ['pending', 'processing', 'completed', 'failed'],
+      default: 'completed',
     },
     likes: {
       type: [{ type: Schema.Types.ObjectId, ref: 'User' }],

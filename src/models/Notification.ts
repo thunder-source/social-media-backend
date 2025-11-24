@@ -5,7 +5,8 @@ export type NotificationType =
   | 'friend_accepted'
   | 'new_message'
   | 'post_like'
-  | 'post_comment';
+  | 'post_comment'
+  | 'video_processed';
 
 export interface INotification {
   userId: Types.ObjectId;
@@ -26,7 +27,7 @@ const NotificationSchema = new Schema<INotification, NotificationModel>(
     userId: { type: Schema.Types.ObjectId, ref: 'User', required: true },
     type: {
       type: String,
-      enum: ['friend_request', 'friend_accepted', 'new_message', 'post_like', 'post_comment'],
+      enum: ['friend_request', 'friend_accepted', 'new_message', 'post_like', 'post_comment', 'video_processed'],
       required: true,
     },
     fromUser: { type: Schema.Types.ObjectId, ref: 'User', required: true },

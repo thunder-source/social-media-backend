@@ -5,6 +5,7 @@ import { uploadToFirebase, deleteFromFirebase } from '../services/firebase.servi
 import { Types } from 'mongoose';
 import { compressVideo } from '../services/video.service';
 import { createAndEmit } from '../services/notification.service';
+import { videoQueue } from '../config/queue';
 
 class PostController {
   /**
@@ -28,12 +29,36 @@ class PostController {
 
       // Handle file upload
       if (file) {
+        // Async Video Processing
+        if (file.mimetype.startsWith('video/') && videoQueue) {
+             mediaUrl = await uploadToFirebase(file, 'posts');
+             const post = await Post.create({
+                userId: user.id,
+                text: text.trim(),
+                mediaUrl,
+                mediaType: 'video',
+                processingStatus: 'pending',
+             });
+
+             await videoQueue.add('compress-video', {
+                 postId: post._id.toString(),
+                 fileUrl: mediaUrl,
+                 originalName: file.originalname,
+                 mimetype: file.mimetype,
+                 userId: user.id
+             });
+
+             await post.populate('userId', '-password');
+             res.status(201).json(post);
+             return;
+        }
+
         let fileToUpload = file;
 
-        // Compress video if it's a video file
+        // Compress video if it's a video file (Sync Fallback)
         if (file.mimetype.startsWith('video/')) {
           try {
-            console.log('Compressing video...');
+            console.log('Compressing video (Sync)...');
             const compressedBuffer = await compressVideo(file.buffer, file.originalname);
             
             // Create a new file object with compressed buffer
@@ -58,6 +83,7 @@ class PostController {
         text: text.trim(),
         mediaUrl,
         mediaType,
+        processingStatus: 'completed',
       });
 
       // Populate user info before sending response
@@ -172,12 +198,35 @@ class PostController {
           await deleteFromFirebase(post.mediaUrl);
         }
 
+        // Async Video Processing
+        if (file.mimetype.startsWith('video/') && videoQueue) {
+             const mediaUrl = await uploadToFirebase(file, 'posts');
+             
+             post.mediaUrl = mediaUrl;
+             post.mediaType = 'video';
+             post.processingStatus = 'pending';
+             
+             await post.save();
+
+             await videoQueue.add('compress-video', {
+                 postId: post._id.toString(),
+                 fileUrl: mediaUrl,
+                 originalName: file.originalname,
+                 mimetype: file.mimetype,
+                 userId: user.id
+             });
+
+             await post.populate('userId', '-password');
+             res.json(post);
+             return;
+        }
+
         let fileToUpload = file;
 
-        // Compress video if it's a video file
+        // Compress video if it's a video file (Sync Fallback)
         if (file.mimetype.startsWith('video/')) {
           try {
-            console.log('Compressing video...');
+            console.log('Compressing video (Sync)...');
             const compressedBuffer = await compressVideo(file.buffer, file.originalname);
             
             // Create a new file object with compressed buffer
@@ -196,6 +245,7 @@ class PostController {
         // Upload new media
         post.mediaUrl = await uploadToFirebase(fileToUpload, 'posts');
         post.mediaType = file.mimetype.startsWith('image/') ? 'image' : 'video';
+        post.processingStatus = 'completed';
       }
 
       await post.save();

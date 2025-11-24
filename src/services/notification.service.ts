@@ -48,6 +48,9 @@ export const createAndEmit = async (
       case 'post_comment':
         message = `${fromUser.name} commented on your post`;
         break;
+      case 'video_processed':
+        message = 'Your video is ready to view';
+        break;
       default:
         message = 'New notification';
     }

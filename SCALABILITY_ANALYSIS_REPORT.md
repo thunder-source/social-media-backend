@@ -73,7 +73,7 @@ await new Promise<void>((resolve, reject) => { ffmpeg(inputPath)... })
 *   [x] **State:** Move `userConnections` Map to Redis.
 
 ### Phase 2: Performance Stability (Next 10K Users)
-*   [ ] **Queues:** Implement BullMQ for video processing.
+*   [x] **Queues:** Implement BullMQ for video processing.
 *   [ ] **Database:** Extract `Friends` and `Likes` to separate collections.
 *   [ ] **CDN:** Serve static assets (images/videos) via CloudFront/S3, not the backend.
 

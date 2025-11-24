@@ -23,6 +23,7 @@ import healthRoutes from './routes/health.routes';
 import { errorHandler } from './middlewares/error.middleware';
 import { setupSwagger } from './config/swagger';
 import { initializeSocket } from './services/socket.service';
+import './workers/video.worker';
 
 const app = express();
 
