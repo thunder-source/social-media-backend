@@ -85,6 +85,7 @@ PostSchema.virtual('commentsCount').get(function (this: PostDocument) {
 });
 
 PostSchema.index({ userId: 1, createdAt: -1 });
+PostSchema.index({ createdAt: -1 });
 PostSchema.index({ 'comments.userId': 1 });
 
 export const Post = model<IPost, PostModel>('Post', PostSchema);

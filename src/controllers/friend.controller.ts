@@ -196,8 +196,17 @@ class FriendController {
         .populate('from', 'name email photo')
         .populate('to', 'name email photo');
 
+      if (!populatedRequest) {
+        res.status(404).json({ message: 'Friend request not found.' });
+        return;
+      }
+
       // Get user data for socket event
       const acceptingUser = await User.findById(userId).select('name email photo');
+
+      // Check online statuses
+      const isAcceptingUserOnline = await socketService.isUserOnline(userId);
+      const isRequesterOnline = await socketService.isUserOnline(fromUserId);
 
       // Emit socket event to requester
       try {
@@ -205,7 +214,28 @@ class FriendController {
           request: populatedRequest,
           chatId: chat._id,
           message: `${acceptingUser?.name} accepted your friend request`,
+          newFriend: {
+            ...acceptingUser?.toObject(),
+            _id: acceptingUser?._id.toString(),
+            isOnline: isAcceptingUserOnline,
+          },
         });
+
+        // Also emit online status to the requester so they know we are online
+        if (isAcceptingUserOnline) {
+          socketService.emitToUser(fromUserId, 'user:online', {
+            userId: userId,
+            timestamp: new Date().toISOString(),
+          });
+        }
+
+        // If requester is online, notify the accepting user (userId) that the requester is online
+        if (isRequesterOnline) {
+          socketService.emitToUser(userId, 'user:online', {
+            userId: fromUserId,
+            timestamp: new Date().toISOString(),
+          });
+        }
       } catch (socketError) {
         console.error('Socket emission error:', socketError);
       }
@@ -220,6 +250,10 @@ class FriendController {
         message: 'Friend request accepted successfully.',
         request: populatedRequest,
         chatId: chat._id,
+        newFriend: {
+          ...(populatedRequest.from as any).toObject(),
+          isOnline: isRequesterOnline,
+        },
       });
     } catch (error) {
       next(error);
@@ -386,10 +420,15 @@ class FriendController {
         return;
       }
 
-      const friendsWithStatus = (user.friends || []).map((friend: any) => ({
+      const friends = user.friends || [];
+      const onlineStatus = await Promise.all(
+        friends.map((friend: any) => socketService.isUserOnline(friend._id.toString()))
+      );
+
+      const friendsWithStatus = friends.map((friend: any, index: number) => ({
         ...friend,
         _id: friend._id.toString(),
-        isOnline: socketService.isUserOnline(friend._id.toString()),
+        isOnline: onlineStatus[index],
       }));
 
       res.json({

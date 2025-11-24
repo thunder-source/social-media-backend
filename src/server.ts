@@ -40,15 +40,28 @@ app.use(cookieParser());
 app.use(compression());
 app.use(morgan('dev'));
 
+import { RedisStore } from 'connect-redis';
+import { redisClient, isRedisEnabled } from './config/redis';
+
 const SESSION_SECRET = process.env.SESSION_SECRET ?? 'session-secret';
 
-app.use(
-  session({
-    secret: SESSION_SECRET,
-    resave: false,
-    saveUninitialized: false,
-  })
-);
+const sessionConfig: session.SessionOptions = {
+  secret: SESSION_SECRET,
+  resave: false,
+  saveUninitialized: false,
+};
+
+if (isRedisEnabled && redisClient) {
+  sessionConfig.store = new RedisStore({
+    client: redisClient,
+    prefix: 'sess:',
+  });
+  console.log('Using Redis for session storage');
+} else {
+  console.log('Using MemoryStore for session storage');
+}
+
+app.use(session(sessionConfig));
 
 app.use(passport.initialize());
 app.use(passport.session());

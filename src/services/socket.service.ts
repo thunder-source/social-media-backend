@@ -2,6 +2,8 @@ import { Server as HttpServer } from 'http';
 import { Server, Socket } from 'socket.io';
 import { registerSocketHandlers } from '../socket/socketHandlers';
 import { User } from '../models/User';
+import { createAdapter } from '@socket.io/redis-adapter';
+import { redisClient, isRedisEnabled } from '../config/redis';
 
 /**
  * SocketService class to manage Socket.io connections and event emissions
@@ -21,6 +23,20 @@ export class SocketService {
       },
     });
 
+    if (isRedisEnabled && redisClient) {
+      const pubClient = redisClient.duplicate();
+      const subClient = redisClient.duplicate();
+
+      Promise.all([pubClient.connect(), subClient.connect()]).then(() => {
+        if (this.io) {
+          this.io.adapter(createAdapter(pubClient, subClient));
+          console.log('Socket.IO Redis adapter configured');
+        }
+      }).catch(err => {
+        console.error('Failed to connect Redis adapter clients', err);
+      });
+    }
+
     registerSocketHandlers(this.io, this);
 
     return this.io;
@@ -38,11 +54,11 @@ export class SocketService {
 
   /**
    * Add a user connection to the tracking map
+   * Note: With Redis adapter, we rely on rooms, but we keep this for logging
    */
   addUserConnection(userId: string, socketId: string): void {
     this.userConnections.set(userId, socketId);
     console.log(`User ${userId} connected with socket ${socketId}`);
-    console.log(`Active connections: ${this.userConnections.size}`);
   }
 
   /**
@@ -51,11 +67,11 @@ export class SocketService {
   removeUserConnection(userId: string): void {
     this.userConnections.delete(userId);
     console.log(`User ${userId} disconnected`);
-    console.log(`Active connections: ${this.userConnections.size}`);
   }
 
   /**
    * Get socket ID for a specific user
+   * @deprecated Use rooms instead
    */
   getUserSocketId(userId: string): string | undefined {
     return this.userConnections.get(userId);
@@ -63,9 +79,17 @@ export class SocketService {
 
   /**
    * Check if a user is currently online
+   * Checks across all nodes if Redis adapter is enabled
    */
-  isUserOnline(userId: string): boolean {
-    return this.userConnections.has(userId);
+  async isUserOnline(userId: string): Promise<boolean> {
+    if (!this.io) return false;
+    try {
+      const sockets = await this.io.in(userId).fetchSockets();
+      return sockets.length > 0;
+    } catch (error) {
+      console.error(`Error checking online status for ${userId}:`, error);
+      return false;
+    }
   }
 
   /**
@@ -77,13 +101,9 @@ export class SocketService {
       return;
     }
 
-    const socketId = this.getUserSocketId(userId);
-    if (socketId) {
-      this.io.to(socketId).emit(event, data);
-      console.log(`Emitted ${event} to user ${userId}`);
-    } else {
-      console.log(`User ${userId} is not online, cannot emit ${event}`);
-    }
+    // Emit to the user's room (works across multiple nodes with Redis adapter)
+    this.io.to(userId).emit(event, data);
+    console.log(`Emitted ${event} to user ${userId}`);
   }
 
   /**
@@ -104,19 +124,15 @@ export class SocketService {
         return;
       }
 
-      // Emit to each online friend
+      // Emit to each friend's room
       let notifiedCount = 0;
       for (const friendId of user.friends) {
         const friendIdString = friendId.toString();
-        const friendSocketId = this.getUserSocketId(friendIdString);
-        
-        if (friendSocketId) {
-          this.io.to(friendSocketId).emit(event, data);
-          notifiedCount++;
-        }
+        this.io.to(friendIdString).emit(event, data);
+        notifiedCount++;
       }
 
-      console.log(`Emitted ${event} to ${notifiedCount} online friends of user ${userId}`);
+      console.log(`Emitted ${event} to ${notifiedCount} friends of user ${userId}`);
     } catch (error) {
       console.error('Error emitting to friends:', error);
     }
@@ -124,6 +140,7 @@ export class SocketService {
 
   /**
    * Get all active user IDs
+   * Note: This only returns users connected to THIS node currently
    */
   getActiveUserIds(): string[] {
     return Array.from(this.userConnections.keys());

@@ -117,9 +117,11 @@ const handleConnection = (socket: AuthenticatedSocket, socketService: SocketServ
         return;
       }
 
-      const onlineFriends = user.friends
-        .map(friendId => friendId.toString())
-        .filter(friendId => socketService.isUserOnline(friendId));
+      const friendIds = user.friends.map(friendId => friendId.toString());
+      const onlineStatus = await Promise.all(
+        friendIds.map(id => socketService.isUserOnline(id))
+      );
+      const onlineFriends = friendIds.filter((_, index) => onlineStatus[index]);
 
       socket.emit('friends:online', { 
         onlineFriends,
