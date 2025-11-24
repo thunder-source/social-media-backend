@@ -60,17 +60,25 @@ class FriendController {
         return;
       }
 
-      // Check if friend request already exists
+      // Check and handle existing friend requests
       const existingRequest = await FriendRequest.findOne({
         $or: [
-          { from: fromUserId, to: toUserId, status: 'pending' },
-          { from: toUserId, to: fromUserId, status: 'pending' },
+          { from: fromUserId, to: toUserId },
+          { from: toUserId, to: fromUserId },
         ],
       });
 
       if (existingRequest) {
-        res.status(400).json({ message: 'Friend request already exists.' });
-        return;
+        // If there's a pending request from either side
+        if (existingRequest.status === 'pending') {
+          res.status(400).json({ message: 'Friend request already exists.' });
+          return;
+        }
+        
+        // If there's an old accepted/rejected request, delete it and create new
+        if (existingRequest.status === 'accepted' || existingRequest.status === 'rejected') {
+          await FriendRequest.deleteOne({ _id: existingRequest._id });
+        }
       }
 
       // Create friend request
@@ -326,6 +334,14 @@ class FriendController {
 
       await User.findByIdAndUpdate(friendId, {
         $pull: { friends: userId },
+      });
+
+      // Delete any friend requests between these users
+      await FriendRequest.deleteMany({
+        $or: [
+          { from: userId, to: friendId },
+          { from: friendId, to: userId },
+        ],
       });
 
       // Get user data for socket event
