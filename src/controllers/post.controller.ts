@@ -6,6 +6,7 @@ import { Types } from 'mongoose';
 import { compressVideo } from '../services/video.service';
 import { createAndEmit } from '../services/notification.service';
 import { videoQueue } from '../config/queue';
+import { Like } from '../models/Like';
 
 class PostController {
   /**
@@ -49,7 +50,14 @@ class PostController {
              });
 
              await post.populate('userId', '-password');
-             res.status(201).json(post);
+             
+             const postResponse = {
+                ...post.toObject(),
+                isLiked: false,
+                commentsCount: 0
+             };
+
+             res.status(201).json(postResponse);
              return;
         }
 
@@ -89,7 +97,13 @@ class PostController {
       // Populate user info before sending response
       await post.populate('userId', '-password');
 
-      res.status(201).json(post);
+      const postResponse = {
+        ...post.toObject(),
+        isLiked: false,
+        commentsCount: 0
+      };
+
+      res.status(201).json(postResponse);
     } catch (error) {
       next(error);
     }
@@ -111,12 +125,30 @@ class PostController {
           .populate('comments.userId', 'name photo')
           .sort({ createdAt: -1 })
           .skip(skip)
-          .limit(limit),
+          .limit(limit)
+          .lean(),
         Post.countDocuments(),
       ]);
 
+      const user = (req as RequestWithUser).user as AuthenticatedUser;
+      let likedPostIds = new Set<string>();
+
+      if (user) {
+        const likes = await Like.find({
+          user: user.id,
+          post: { $in: posts.map(p => p._id) }
+        });
+        likedPostIds = new Set(likes.map(l => l.post.toString()));
+      }
+
+      const postsWithLikeStatus = posts.map(post => ({
+        ...post,
+        isLiked: likedPostIds.has(post._id.toString()),
+        commentsCount: post.comments?.length || 0
+      }));
+
       res.json({
-        posts,
+        posts: postsWithLikeStatus,
         pagination: {
           page,
           limit,
@@ -144,14 +176,26 @@ class PostController {
 
       const post = await Post.findById(id)
         .populate('userId', '-password')
-        .populate('comments.userId', 'name photo');
+        .populate('comments.userId', 'name photo')
+        .lean();
 
       if (!post) {
         res.status(404).json({ message: 'Post not found.' });
         return;
       }
 
-      res.json(post);
+      const user = (req as RequestWithUser).user as AuthenticatedUser;
+      let isLiked = false;
+
+      if (user) {
+        isLiked = !!(await Like.exists({ user: user.id, post: id }));
+      }
+
+      res.json({ 
+        ...post, 
+        isLiked,
+        commentsCount: post.comments?.length || 0
+      });
     } catch (error) {
       next(error);
     }
@@ -217,7 +261,16 @@ class PostController {
              });
 
              await post.populate('userId', '-password');
-             res.json(post);
+             
+             const isLiked = !!(await Like.exists({ user: user.id, post: post._id }));
+
+             const postResponse = {
+                ...post.toObject(),
+                isLiked,
+                commentsCount: post.comments?.length || 0
+             };
+
+             res.json(postResponse);
              return;
         }
 
@@ -251,7 +304,15 @@ class PostController {
       await post.save();
       await post.populate('userId', '-password');
 
-      res.json(post);
+      const isLiked = !!(await Like.exists({ user: user.id, post: post._id }));
+
+      const postResponse = {
+        ...post.toObject(),
+        isLiked,
+        commentsCount: post.comments?.length || 0
+      };
+
+      res.json(postResponse);
     } catch (error) {
       next(error);
     }
@@ -319,17 +380,20 @@ class PostController {
       }
 
       const userObjectId = new Types.ObjectId(user.id);
-      const likeIndex = post.likes?.findIndex((like) => like.toString() === user.id);
+      
+      const existingLike = await Like.findOne({ user: user.id, post: id });
+      let isLiked = false;
 
-      if (likeIndex !== undefined && likeIndex > -1) {
-        // Unlike: Remove user from likes array
-        post.likes?.splice(likeIndex, 1);
+      if (existingLike) {
+        // Unlike
+        await Like.deleteOne({ _id: existingLike._id });
+        post.likesCount = Math.max(0, (post.likesCount || 0) - 1);
+        isLiked = false;
       } else {
-        // Like: Add user to likes array
-        if (!post.likes) {
-          post.likes = [];
-        }
-        post.likes.push(userObjectId);
+        // Like
+        await Like.create({ user: user.id, post: id });
+        post.likesCount = (post.likesCount || 0) + 1;
+        isLiked = true;
         
         // Send notification if liking someone else's post
         if (post.userId.toString() !== user.id) {
@@ -341,9 +405,15 @@ class PostController {
       }
 
       await post.save();
-      await post.populate('userId', '-password');
+      const populatedPost = await Post.findById(post._id)
+          .populate('userId', '-password')
+          .lean();
 
-      res.json(post);
+      res.json({ 
+          ...populatedPost, 
+          isLiked,
+          commentsCount: post.comments?.length || 0
+      });
     } catch (error) {
       next(error);
     }
@@ -401,7 +471,15 @@ class PostController {
       await post.populate('userId', '-password');
       await post.populate('comments.userId', 'name photo');
 
-      res.status(201).json(post);
+      const isLiked = !!(await Like.exists({ user: user.id, post: post._id }));
+
+      const postResponse = {
+        ...post.toObject(),
+        isLiked,
+        commentsCount: post.comments?.length || 0
+      };
+
+      res.status(201).json(postResponse);
     } catch (error) {
       next(error);
     }

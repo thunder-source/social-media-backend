@@ -1,6 +1,7 @@
 import { Response, NextFunction } from 'express';
 import { Types } from 'mongoose';
 import { FriendRequest } from '../models/FriendRequest';
+import { Friend } from '../models/Friend';
 import { User } from '../models/User';
 import { Chat } from '../models/Chat';
 import { RequestWithUser } from '../types';
@@ -52,9 +53,7 @@ class FriendController {
       }
 
       // Check if already friends
-      const alreadyFriends = fromUser.friends?.some(
-        (friendId) => friendId.toString() === toUserId
-      );
+      const alreadyFriends = await Friend.exists({ user: fromUserId, friend: toUserId });
       if (alreadyFriends) {
         res.status(400).json({ message: 'You are already friends with this user.' });
         return;
@@ -163,14 +162,15 @@ class FriendController {
       const fromUserId = friendRequest.from.toString();
       const toUserId = friendRequest.to.toString();
 
-      // Update both users' friends arrays
-      await User.findByIdAndUpdate(fromUserId, {
-        $addToSet: { friends: toUserId },
-      });
+      // Create friendship records (bidirectional)
+      await Friend.create([
+        { user: fromUserId, friend: toUserId },
+        { user: toUserId, friend: fromUserId }
+      ]);
 
-      await User.findByIdAndUpdate(toUserId, {
-        $addToSet: { friends: fromUserId },
-      });
+      // Update friends counts
+      await User.findByIdAndUpdate(fromUserId, { $inc: { friendsCount: 1 } });
+      await User.findByIdAndUpdate(toUserId, { $inc: { friendsCount: 1 } });
 
       // Update friend request status
       friendRequest.status = 'accepted';
@@ -346,29 +346,23 @@ class FriendController {
       }
 
       // Check if they are actually friends
-      const user = await User.findById(userId);
-      if (!user) {
-        res.status(404).json({ message: 'User not found.' });
-        return;
-      }
-
-      const isFriend = user.friends?.some(
-        (id) => id.toString() === friendId
-      );
-
-      if (!isFriend) {
+      const friendship = await Friend.findOne({ user: userId, friend: friendId });
+      if (!friendship) {
         res.status(400).json({ message: 'You are not friends with this user.' });
         return;
       }
 
-      // Remove from both users' friends arrays
-      await User.findByIdAndUpdate(userId, {
-        $pull: { friends: friendId },
+      // Remove friendship records (bidirectional)
+      await Friend.deleteMany({
+        $or: [
+          { user: userId, friend: friendId },
+          { user: friendId, friend: userId }
+        ]
       });
 
-      await User.findByIdAndUpdate(friendId, {
-        $pull: { friends: userId },
-      });
+      // Update friends counts
+      await User.findByIdAndUpdate(userId, { $inc: { friendsCount: -1 } });
+      await User.findByIdAndUpdate(friendId, { $inc: { friendsCount: -1 } });
 
       // Delete any friend requests between these users
       await FriendRequest.deleteMany({
@@ -410,17 +404,12 @@ class FriendController {
     try {
       const userId = (req.user as any)?.id;
 
-      const user = await User.findById(userId).populate(
-        'friends',
-        'name email photo'
-      ).lean();
+      const friendships = await Friend.find({ user: userId })
+        .populate('friend', 'name email photo')
+        .lean();
 
-      if (!user) {
-        res.status(404).json({ message: 'User not found.' });
-        return;
-      }
-
-      const friends = user.friends || [];
+      const friends = friendships.map(f => f.friend);
+      
       const onlineStatus = await Promise.all(
         friends.map((friend: any) => socketService.isUserOnline(friend._id.toString()))
       );

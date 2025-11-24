@@ -14,11 +14,10 @@ export interface IPost {
   mediaUrl?: string;
   mediaType?: MediaType;
   processingStatus?: 'pending' | 'processing' | 'completed' | 'failed';
-  likes?: Types.ObjectId[];
+  likesCount?: number;
   comments?: IPostComment[];
   createdAt?: Date;
   updatedAt?: Date;
-  likesCount?: number;
   commentsCount?: number;
 }
 
@@ -66,9 +65,9 @@ const PostSchema = new Schema<IPost, PostModel>(
       enum: ['pending', 'processing', 'completed', 'failed'],
       default: 'completed',
     },
-    likes: {
-      type: [{ type: Schema.Types.ObjectId, ref: 'User' }],
-      default: [],
+    likesCount: {
+      type: Number,
+      default: 0,
     },
     comments: {
       type: [CommentSchema],
@@ -81,10 +80,6 @@ const PostSchema = new Schema<IPost, PostModel>(
     toObject: { virtuals: true, versionKey: false },
   }
 );
-
-PostSchema.virtual('likesCount').get(function (this: PostDocument) {
-  return this.likes?.length ?? 0;
-});
 
 PostSchema.virtual('commentsCount').get(function (this: PostDocument) {
   return this.comments?.length ?? 0;
