@@ -18,9 +18,17 @@ const unlink = promisify(fs.unlink);
  * Compress a video buffer using ffmpeg
  * @param fileBuffer - The video file buffer
  * @param originalName - The original filename
- * @returns Compressed video buffer
+ * @returns Compressed video buffer (or original if compression is disabled)
  */
 export const compressVideo = async (fileBuffer: Buffer, originalName: string): Promise<Buffer> => {
+  // Check if video compression is enabled via environment variable
+  const isCompressionEnabled = process.env.ENABLE_VIDEO_COMPRESSION === 'true';
+  
+  if (!isCompressionEnabled) {
+    console.log('Video compression is disabled. Returning original video.');
+    return fileBuffer;
+  }
+
   const tempDir = os.tmpdir();
   const timestamp = Date.now();
   const safeName = originalName.replace(/[^a-z0-9.]/gi, '_');
