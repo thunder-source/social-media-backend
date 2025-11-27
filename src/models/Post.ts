@@ -13,11 +13,11 @@ export interface IPost {
   text: string;
   mediaUrl?: string;
   mediaType?: MediaType;
-  likes?: Types.ObjectId[];
+  processingStatus?: 'pending' | 'processing' | 'completed' | 'failed';
+  likesCount?: number;
   comments?: IPostComment[];
   createdAt?: Date;
   updatedAt?: Date;
-  likesCount?: number;
   commentsCount?: number;
 }
 
@@ -60,9 +60,14 @@ const PostSchema = new Schema<IPost, PostModel>(
       enum: ['image', 'video', null],
       default: null,
     },
-    likes: {
-      type: [{ type: Schema.Types.ObjectId, ref: 'User' }],
-      default: [],
+    processingStatus: {
+      type: String,
+      enum: ['pending', 'processing', 'completed', 'failed'],
+      default: 'completed',
+    },
+    likesCount: {
+      type: Number,
+      default: 0,
     },
     comments: {
       type: [CommentSchema],
@@ -76,15 +81,12 @@ const PostSchema = new Schema<IPost, PostModel>(
   }
 );
 
-PostSchema.virtual('likesCount').get(function (this: PostDocument) {
-  return this.likes?.length ?? 0;
-});
-
 PostSchema.virtual('commentsCount').get(function (this: PostDocument) {
   return this.comments?.length ?? 0;
 });
 
 PostSchema.index({ userId: 1, createdAt: -1 });
+PostSchema.index({ createdAt: -1 });
 PostSchema.index({ 'comments.userId': 1 });
 
 export const Post = model<IPost, PostModel>('Post', PostSchema);

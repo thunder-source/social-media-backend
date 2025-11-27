@@ -20,6 +20,32 @@ const unlink = promisify(fs.unlink);
  * @param originalName - The original filename
  * @returns Compressed video buffer (or original if compression is disabled)
  */
+/**
+ * Compress a video file from a path
+ * @param inputPath - The input file path
+ * @param outputPath - The output file path
+ */
+export const compressVideoFromFile = async (inputPath: string, outputPath: string): Promise<void> => {
+   return new Promise<void>((resolve, reject) => {
+      ffmpeg(inputPath)
+        .output(outputPath)
+        .videoCodec('libx264')
+        .size('?x480') // Resize to 480p max height for better compression
+        .videoBitrate('500k') // Target bitrate 500kbps
+        .audioCodec('aac')
+        .audioBitrate('64k') // Lower audio bitrate
+        .on('end', () => resolve())
+        .on('error', (err: any) => reject(err))
+        .run();
+    });
+}
+
+/**
+ * Compress a video buffer using ffmpeg
+ * @param fileBuffer - The video file buffer
+ * @param originalName - The original filename
+ * @returns Compressed video buffer (or original if compression is disabled)
+ */
 export const compressVideo = async (fileBuffer: Buffer, originalName: string): Promise<Buffer> => {
   // Check if video compression is enabled via environment variable
   const isCompressionEnabled = process.env.ENABLE_VIDEO_COMPRESSION === 'true';
@@ -40,18 +66,7 @@ export const compressVideo = async (fileBuffer: Buffer, originalName: string): P
     await writeFile(inputPath, fileBuffer);
 
     // Compress video
-    await new Promise<void>((resolve, reject) => {
-      ffmpeg(inputPath)
-        .output(outputPath)
-        .videoCodec('libx264')
-        .size('?x480') // Resize to 480p max height for better compression
-        .videoBitrate('500k') // Target bitrate 500kbps
-        .audioCodec('aac')
-        .audioBitrate('64k') // Lower audio bitrate
-        .on('end', () => resolve())
-        .on('error', (err: any) => reject(err))
-        .run();
-    });
+    await compressVideoFromFile(inputPath, outputPath);
 
     // Read compressed file
     const compressedBuffer = await readFile(outputPath);

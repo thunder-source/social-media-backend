@@ -6,7 +6,6 @@ export interface IUser {
   name: string;
   photo?: string;
   password?: string;
-  friends?: Types.ObjectId[];
   createdAt?: Date;
   updatedAt?: Date;
   friendsCount?: number;
@@ -42,9 +41,9 @@ const UserSchema = new Schema<IUser, UserModel>(
       type: String,
       trim: true,
     },
-    friends: {
-      type: [{ type: Schema.Types.ObjectId, ref: 'User' }],
-      default: [],
+    friendsCount: {
+      type: Number,
+      default: 0,
     },
     pushSubscription: {
       type: Object, // Store the whole subscription object
@@ -57,10 +56,6 @@ const UserSchema = new Schema<IUser, UserModel>(
     toObject: { virtuals: true, versionKey: false },
   }
 );
-
-UserSchema.virtual('friendsCount').get(function (this: UserDocument) {
-  return this.friends?.length ?? 0;
-});
 
 // Define indexes explicitly to avoid duplicates
 UserSchema.index({ googleId: 1 }, { unique: true, sparse: true });

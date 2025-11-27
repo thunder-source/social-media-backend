@@ -30,6 +30,7 @@ const MessageSchema = new Schema<IMessage, MessageModel>(
 
 MessageSchema.index({ chatId: 1, createdAt: 1 });
 MessageSchema.index({ senderId: 1, createdAt: -1 });
+MessageSchema.index({ chatId: 1, readBy: 1 });
 
 export const Message = model<IMessage, MessageModel>('Message', MessageSchema);
 

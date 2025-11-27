@@ -30,22 +30,6 @@ const router = Router();
  *           type: string
  *           description: Post content
  *         mediaUrl:
- *           type: string
- *           description: URL of uploaded media
- *         mediaType:
- *           type: string
- *           enum: [image, video, null]
- *           description: Type of media
- *         likes:
- *           type: array
- *           items:
- *             type: string
- *           description: Array of user IDs who liked the post
- *         comments:
- *           type: array
- *           items:
- *             type: object
- *             properties:
  *               userId:
  *                 type: object
  *                 properties:
@@ -234,7 +218,7 @@ router.post('/', verifyToken, upload.single('file'), validateFileSize, postContr
  *                   text: "My first post!"
  *                   mediaUrl: "https://storage.googleapis.com/.../posts/image.jpg"
  *                   mediaType: "image"
- *                   likes: ["507f191e810c19729de860eb"]
+ *                   isLiked: true
  *                   comments: []
  *                   likesCount: 1
  *                   commentsCount: 0

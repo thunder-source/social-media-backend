@@ -41,6 +41,7 @@ ChatSchema.pre('validate', function (this: ChatDocument, next) {
 // This ensures that a chat between user A and user B is unique
 // but allows each user to participate in multiple different chats
 ChatSchema.index({ 'participants.0': 1, 'participants.1': 1 }, { unique: true });
+ChatSchema.index({ participants: 1, updatedAt: -1 });
 ChatSchema.index({ updatedAt: -1 });
 
 export const Chat = model<IChat, ChatModel>('Chat', ChatSchema);
